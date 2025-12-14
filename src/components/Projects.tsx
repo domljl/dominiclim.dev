@@ -1,6 +1,6 @@
 import React from 'react';
 import projectsData from '../data/projects.json';
-import { kineGit, portfolioWebsite, ocbcVTM } from '../assets';
+import { kineGit, portfolioWebsite, ocbcVTM, facialRecognition } from '../assets';
 
 interface Project {
   title: string;
@@ -24,6 +24,8 @@ const getProjectImage = (imagePath: string): string | null => {
       return kineGit.src;
     case '/assets/projectsImg/ocbcVTM.png':
       return ocbcVTM.src;
+    case '/assets/projectsImg/facialRecognition.png':
+      return facialRecognition.src;
     case '/placeholder-project.jpg':
       return null;
     default:
@@ -33,12 +35,12 @@ const getProjectImage = (imagePath: string): string | null => {
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, index }) => {
   return (
-    <div 
+    <div
       className="group relative bg-white dark:bg-gray-800 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] border border-gray-100 dark:border-gray-700 overflow-hidden"
       style={{ animationDelay: `${index * 150}ms` }}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900/20 rounded-3xl"></div>
-      
+
       <div className="absolute inset-0 bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 dark:from-blue-500/20 dark:via-purple-500/20 dark:to-pink-500/20 rounded-3xl p-[1px]">
         <div className="w-full h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-3xl"></div>
       </div>
@@ -71,11 +73,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, index }) => {
             );
           })()}
         </div>
-        
+
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
           {project.title}
         </h3>
-        
+
         <p className="text-gray-600 dark:text-gray-300 mb-6 flex-grow leading-relaxed">
           {project.description}
         </p>
@@ -83,7 +85,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, index }) => {
         <div className="mb-6">
           <div className="flex flex-wrap gap-2">
             {project.technologies.map((tech, techIndex) => (
-              <span 
+              <span
                 key={techIndex}
                 className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/20 dark:to-purple-400/20 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-full border border-blue-200 dark:border-blue-700"
               >
@@ -118,7 +120,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, index }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            <span className="relative z-10 text-sm">{project.title === 'OCBC Virtual Teller Machine' ? 'Video Demo' : 'Live Demo'}</span>
+            <span className="relative z-10 text-sm">{project.title === 'OCBC Virtual Teller Machine' || project.title === 'Facial Recognition Authentication' ? 'Video Demo' : 'Live Demo'}</span>
           </a>
         </div>
       </div>

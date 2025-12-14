@@ -19,6 +19,7 @@ import hackerRank from "./certifications/hackerRank.png";
 import portfolioWebsite from "./projectsImg/portfolioWebsite.png";
 import kineGit from "./projectsImg/kineGit.png";
 import ocbcVTM from "./projectsImg/ocbcVTM.png";
+import facialRecognition from "./projectsImg/facialRecognition.png"
 
 export {
     logo,
@@ -41,5 +42,6 @@ export {
     
     portfolioWebsite,
     kineGit,
-    ocbcVTM
+    ocbcVTM,
+    facialRecognition
 };
