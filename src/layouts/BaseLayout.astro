@@ -1,0 +1,19 @@
+---
+import LoadingScreen from '@/components/LoadingScreen.svelte';
+import '@/styles/global.css';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/domLogo.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <title>Dominic Lim</title>
+    </head>
+    <body>
+        <LoadingScreen client:only="svelte" visible={true} />
+        <slot />
+    </body>
+</html>

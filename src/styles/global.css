@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+@keyframes quadrant-exit-tl {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-100%, -100%); }
+}
+
+@keyframes quadrant-exit-tr {
+    from { transform: translate(0, 0); }
+    to { transform: translate(100%, -100%); }
+}
+
+@keyframes quadrant-exit-bl {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-100%, 100%); }
+}
+
+@keyframes quadrant-exit-br {
+    from { transform: translate(0, 0); }
+    to { transform: translate(100%, 100%); }
+}
+
+@layer utilities {
+    .animate-quadrant-exit-tl {
+        animation: quadrant-exit-tl 1200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .animate-quadrant-exit-tr {
+        animation: quadrant-exit-tr 1200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .animate-quadrant-exit-bl {
+        animation: quadrant-exit-bl 1200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .animate-quadrant-exit-br {
+        animation: quadrant-exit-br 1200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+}
