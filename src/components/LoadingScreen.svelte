@@ -5,6 +5,7 @@
     import { parse as openTypeParse } from 'opentype.js';
     import type { Font } from 'opentype.js';
     import spaceGroteskFontUrl from '@/assets/fonts/SpaceGrotesk-500.ttf?url';
+    import { getThemeColors, subscribeToColorScheme } from '@/lib/theme';
 
     export let visible = true;
     export let onComplete: () => void = () => {};
@@ -66,13 +67,6 @@
     let particlesSpawned = false;
     let reducedMotion = false;
     let isDark = false;
-
-    function getColors(dark: boolean) {
-        return {
-            bg: dark ? 0x02182b : 0xfdf7c3,
-            text: dark ? 0xd7263d : 0xf0485f
-        };
-    }
 
     let loaded = false;
     let minElapsed = false;
@@ -225,7 +219,7 @@
         );
         particleVelocities = particleVelocities.slice(0, particleIndex * 3);
 
-        const colors = getColors(isDark);
+        const colors = getThemeColors(isDark);
         particleMaterial = new THREE.PointsMaterial({
             color: colors.text,
             size: getResponsiveParticleSize(),
@@ -710,19 +704,16 @@
     onMount(() => {
         if (!canvasEl || !hostEl) return;
 
-        const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        isDark = darkQuery.matches;
-        const onThemeChange = (e: MediaQueryListEvent) => {
-            isDark = e.matches;
-            const colors = getColors(isDark);
+        const unsubscribeTheme = subscribeToColorScheme((dark) => {
+            isDark = dark;
+            const colors = getThemeColors(isDark);
             if (renderer) renderer.setClearColor(colors.bg, 1);
             trailMaterial?.color.set(colors.text);
             for (const unit of letters) {
                 unit.fill.color = colors.text;
             }
             if (renderer && scene && camera) renderer.render(scene, camera);
-        };
-        darkQuery.addEventListener('change', onThemeChange);
+        });
 
         reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -742,7 +733,7 @@
             tryExit();
         }, minDisplayMs);
 
-        const colors = getColors(isDark);
+        const colors = getThemeColors(isDark);
 
         renderer = new THREE.WebGLRenderer({
             canvas: canvasEl,
@@ -874,7 +865,7 @@
         updateProjection();
 
         return () => {
-            darkQuery.removeEventListener('change', onThemeChange);
+            unsubscribeTheme();
             window.removeEventListener('load', onLoad);
             window.removeEventListener('resize', onResize);
             if (minTimer) clearTimeout(minTimer);
@@ -887,7 +878,7 @@
 {#if isVisible || isAnimatingExit}
 <div
     bind:this={hostEl}
-    class="fixed inset-0 z-9999 bg-[#FDF7C3] dark:bg-[#02182B] {isAnimatingExit ? 'pointer-events-none' : ''}"
+    class="fixed inset-0 z-9999 bg-[var(--background)] {isAnimatingExit ? 'pointer-events-none' : ''}"
     style:opacity={hostOpacity}
     aria-hidden={isAnimatingExit && hostOpacity < 0.5}
 >
