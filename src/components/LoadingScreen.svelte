@@ -1,8 +1,9 @@
 <script lang="ts">
-    import { onMount, tick } from 'svelte';
+    import { onMount } from 'svelte';
     import * as THREE from 'three/src/Three.js';
     import { Text } from 'troika-three-text';
     import { parse as openTypeParse } from 'opentype.js';
+    import type { Font } from 'opentype.js';
     import spaceGroteskFontUrl from '@/assets/fonts/SpaceGrotesk-500.ttf?url';
 
     export let visible = true;
@@ -17,31 +18,52 @@
     const letterFontSize = 1.0;
     const letterSpacing = 0.02;
     const spaceWidth = 0.5;
+    const exitPushMs = 600;
+    const exitScatterMs = 2800;
+    const exitFadeMs = 800;
+    const exitTotalMs = exitPushMs + exitScatterMs + exitFadeMs;
+    const exitScaleBoost = 1.08;
+    const exitParticleCount = 400;
+    const exitParticleSpeed = 0.32;
+    const exitParticleMinSize = 3.5;
+    const exitParticleMaxSize = 11;
+    const exitParticleFadeStart = 0.7;
+    const exitHostFadeStart = exitPushMs;
+    const viewportPaddingX = 0.1;
+    const viewportPaddingY = 0.14;
+
+    type ExitPhase = 'idle' | 'push' | 'scatter' | 'fade' | 'done';
+    type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
     type LetterUnit = {
         group: THREE.Group;
-        outline: Text;
         fill: Text;
-        trail: THREE.Line;
-        trails: { line: THREE.Line; lengths: number[]; total: number; points: THREE.Vector3[] }[];
+        trails: { line: THREE.Line; lengths: number[]; total: number }[];
         width: number;
         durationMs: number;
         progress: number;
         completed: boolean;
-        outlinePoints: THREE.Vector3[];
-        outlineLengths: number[];
-        outlineTotal: number;
     };
 
-    const exitSlideMs = 1200;
+    type GlyphOutline = {
+        contours: { points: THREE.Vector3[]; bounds: Bounds }[];
+        width: number;
+        bounds: Bounds;
+    };
+
+    type LetterJob = { kind: 'space' } | { kind: 'letter'; char: string; fill: Text };
 
     let hostEl: HTMLDivElement | null = null;
     let canvasEl: HTMLCanvasElement | null = null;
     let isVisible = visible;
-    let isExiting = false;
-    let slideOut = false;
-    let snapshotUrl = '';
+    let isAnimatingExit = false;
+    let hostOpacity = 1;
     let exitStarted = false;
+    let exitPhase: ExitPhase = 'idle';
+    let exitStartedAt = 0;
+    let exitTextBaseY = 0;
+    let exitTextBaseScale = 1;
+    let particlesSpawned = false;
     let reducedMotion = false;
     let isDark = false;
 
@@ -65,16 +87,27 @@
     let scene: THREE.Scene | null = null;
     let camera: THREE.PerspectiveCamera | null = null;
     let textGroup: THREE.Group | null = null;
-    let pointLight: THREE.PointLight | null = null;
+    let trailMaterial: THREE.LineBasicMaterial | null = null;
+    let particles: THREE.Points | null = null;
+    let particleMaterial: THREE.PointsMaterial | null = null;
+    let particleVelocities: Float32Array | null = null;
+    let labelCenter = new THREE.Vector3();
+    let labelWidth = 0;
+    let labelHeight = letterFontSize;
     let disposed = false;
     let startedAt = 0;
+    let lastFrameTime = 0;
 
     const letters: LetterUnit[] = [];
+    const glyphCache = new Map<string, GlyphOutline>();
+
     $: if (!visible && isVisible) {
         tryExit();
     }
 
     const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
     function completeExit() {
         if (completionFired) return;
@@ -83,8 +116,18 @@
             clearTimeout(exitFallbackTimer);
             exitFallbackTimer = null;
         }
-        isExiting = false;
+        exitPhase = 'done';
+        isAnimatingExit = false;
+        isVisible = false;
+        hostOpacity = 0;
         onComplete();
+    }
+
+    function finishExitAnimation() {
+        if (completionFired || disposed) return;
+        exitPhase = 'done';
+        disposeSceneResources();
+        completeExit();
     }
 
     function tryExit() {
@@ -93,7 +136,7 @@
         if (!canHide) return;
 
         exitStarted = true;
-        isVisible = false;
+        isAnimatingExit = true;
 
         if (reducedMotion) {
             disposeSceneResources();
@@ -101,33 +144,165 @@
             return;
         }
 
-        try {
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-            if (canvasEl) {
-                snapshotUrl = canvasEl.toDataURL('image/png');
-            }
-        } catch {
-            snapshotUrl = '';
-        }
+        exitPhase = 'push';
+        exitStartedAt = performance.now();
+        hostOpacity = 1;
+        particlesSpawned = false;
+        exitTextBaseY = textGroup?.position.y ?? 0;
+        exitTextBaseScale = textGroup?.scale.x ?? 1;
 
-        disposeSceneResources();
-        isExiting = true;
-        void tick().then(() => {
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    slideOut = true;
-                    exitFallbackTimer = setTimeout(() => completeExit(), exitSlideMs + 100);
-                });
-            });
-        });
+        exitFallbackTimer = setTimeout(() => finishExitAnimation(), exitTotalMs + 200);
+
+        if (rafId === null) {
+            rafId = requestAnimationFrame(animate);
+        }
     }
 
-    function onQuadrantAnimationEnd(event: AnimationEvent) {
-        if (!slideOut || completionFired) return;
-        if (!event.animationName.includes('quadrant-exit-tl')) return;
-        completeExit();
+    function getResponsiveParticleSize() {
+        const width = hostEl?.clientWidth || window.innerWidth;
+        const height = hostEl?.clientHeight || window.innerHeight;
+        const minDim = Math.min(width, height);
+        const viewportSize = clamp01((minDim - 320) / 880);
+        const textScale = textGroup?.scale.x ?? 1;
+        const base = exitParticleMinSize + viewportSize * (exitParticleMaxSize - exitParticleMinSize);
+        return Math.max(exitParticleMinSize, base * (0.65 + 0.35 * textScale));
+    }
+
+    function spawnParticles() {
+        if (!scene || !textGroup || particlesSpawned) return;
+        particlesSpawned = true;
+
+        labelCenter.copy(getLabelCenterLocal());
+        textGroup.localToWorld(labelCenter);
+
+        const worldPoints: THREE.Vector3[] = [];
+        const temp = new THREE.Vector3();
+
+        for (const unit of letters) {
+            for (const t of unit.trails) {
+                const geom = t.line.geometry as THREE.BufferGeometry;
+                const pos = geom.getAttribute('position');
+                for (let i = 0; i < pos.count; i += 1) {
+                    temp.fromBufferAttribute(pos, i);
+                    unit.group.localToWorld(temp);
+                    worldPoints.push(temp.clone());
+                }
+            }
+        }
+
+        if (worldPoints.length === 0) return;
+
+        const count = Math.min(exitParticleCount, worldPoints.length);
+        const step = Math.max(1, Math.floor(worldPoints.length / count));
+        const positions = new Float32Array(count * 3);
+        particleVelocities = new Float32Array(count * 3);
+
+        let particleIndex = 0;
+        for (let i = 0; i < worldPoints.length && particleIndex < count; i += step) {
+            const p = worldPoints[i];
+            const idx = particleIndex * 3;
+            positions[idx] = p.x;
+            positions[idx + 1] = p.y;
+            positions[idx + 2] = p.z;
+
+            const dir = p.clone().sub(labelCenter);
+            if (dir.lengthSq() < 1e-6) {
+                dir.set(Math.random() - 0.5, Math.random() - 0.5, 0);
+            }
+            dir.normalize().multiplyScalar(exitParticleSpeed * (0.75 + Math.random() * 0.5));
+            particleVelocities[idx] = dir.x;
+            particleVelocities[idx + 1] = dir.y;
+            particleVelocities[idx + 2] = dir.z;
+            particleIndex += 1;
+        }
+
+        if (particleIndex === 0) return;
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute(
+            'position',
+            new THREE.BufferAttribute(positions.slice(0, particleIndex * 3), 3)
+        );
+        particleVelocities = particleVelocities.slice(0, particleIndex * 3);
+
+        const colors = getColors(isDark);
+        particleMaterial = new THREE.PointsMaterial({
+            color: colors.text,
+            size: getResponsiveParticleSize(),
+            sizeAttenuation: false,
+            transparent: true,
+            opacity: 1,
+            depthWrite: false,
+            depthTest: false
+        });
+
+        particles = new THREE.Points(geom, particleMaterial);
+        scene.add(particles);
+
+        for (const unit of letters) {
+            const fillMat = unit.fill.material as THREE.Material & { opacity?: number };
+            if (fillMat) fillMat.opacity = 0;
+            unit.fill.visible = false;
+            for (const t of unit.trails) {
+                t.line.visible = false;
+            }
+        }
+        if (trailMaterial) trailMaterial.opacity = 0;
+    }
+
+    function applyHostFade(exitElapsed: number) {
+        const fadeDuration = exitTotalMs - exitHostFadeStart;
+        if (exitElapsed < exitHostFadeStart) return 0;
+        return easeOut(clamp01((exitElapsed - exitHostFadeStart) / fadeDuration));
+    }
+
+    function applyParticleFade(exitElapsed: number) {
+        const fadeWindowStart = exitPushMs + exitScatterMs * exitParticleFadeStart;
+        const fadeDuration = exitTotalMs - fadeWindowStart;
+        if (exitElapsed < fadeWindowStart) return 0;
+        return easeOut(clamp01((exitElapsed - fadeWindowStart) / fadeDuration));
+    }
+
+    function updateParticlePositions(deltaMs: number) {
+        if (!particles || !particleVelocities || !particleMaterial) return;
+        const posAttr = particles.geometry.getAttribute('position') as THREE.BufferAttribute;
+        const dt = Math.min(deltaMs, 32) / 16.67;
+        for (let i = 0; i < posAttr.count; i += 1) {
+            posAttr.setX(i, posAttr.getX(i) + particleVelocities[i * 3] * dt);
+            posAttr.setY(i, posAttr.getY(i) + particleVelocities[i * 3 + 1] * dt);
+            posAttr.setZ(i, posAttr.getZ(i) + particleVelocities[i * 3 + 2] * dt);
+        }
+        posAttr.needsUpdate = true;
+    }
+
+    function updateExitAnimation(now: number, deltaMs: number) {
+        if (disposed || !camera || !textGroup || exitPhase === 'idle' || exitPhase === 'done') return;
+
+        const exitElapsed = now - exitStartedAt;
+        const scatterStart = exitPushMs;
+        const fadeStart = exitPushMs + exitScatterMs;
+
+        if (exitElapsed < scatterStart) {
+            exitPhase = 'push';
+            const t = easeOut(clamp01(exitElapsed / exitPushMs));
+            const scale = exitTextBaseScale * (1 + (exitScaleBoost - 1) * t);
+            applyTextGroupScale(scale);
+        } else if (exitElapsed < fadeStart) {
+            exitPhase = 'scatter';
+            spawnParticles();
+            updateParticlePositions(deltaMs);
+
+            hostOpacity = 1 - applyHostFade(exitElapsed);
+            if (particleMaterial) particleMaterial.opacity = 1 - applyParticleFade(exitElapsed);
+        } else if (exitElapsed < exitTotalMs) {
+            exitPhase = 'fade';
+            updateParticlePositions(deltaMs);
+
+            hostOpacity = 1 - applyHostFade(exitElapsed);
+            if (particleMaterial) particleMaterial.opacity = 1 - applyParticleFade(exitElapsed);
+        } else {
+            finishExitAnimation();
+        }
     }
 
     function disposeSceneResources() {
@@ -137,16 +312,24 @@
         rafId = null;
 
         for (const unit of letters) {
-            unit.outline.dispose();
             unit.fill.dispose();
-            (unit.trail.geometry as THREE.BufferGeometry).dispose();
-            (unit.trail.material as THREE.Material).dispose();
             for (const t of unit.trails) {
                 (t.line.geometry as THREE.BufferGeometry).dispose();
-                (t.line.material as THREE.Material).dispose();
             }
         }
         letters.length = 0;
+
+        trailMaterial?.dispose();
+        trailMaterial = null;
+
+        if (particles) {
+            particles.geometry.dispose();
+            particleMaterial?.dispose();
+            scene?.remove(particles);
+            particles = null;
+            particleMaterial = null;
+            particleVelocities = null;
+        }
 
         renderer?.dispose();
         renderer?.forceContextLoss();
@@ -154,7 +337,6 @@
         scene = null;
         camera = null;
         textGroup = null;
-        pointLight = null;
     }
 
     function syncText(text: Text) {
@@ -163,7 +345,7 @@
         });
     }
 
-    function loadOpenTypeFont(url: string): Promise<any> {
+    function loadOpenTypeFont(url: string): Promise<Font> {
         return fetch(url)
             .then((response) => {
                 if (!response.ok) {
@@ -238,22 +420,17 @@
         }
     }
 
-    function buildGlyphOutline(
-        font: any,
-        char: string,
-        fontSize: number
-    ): {
-        contours: { points: THREE.Vector3[]; bounds: { minX: number; minY: number; maxX: number; maxY: number } }[];
-        width: number;
-        bounds: { minX: number; minY: number; maxX: number; maxY: number };
-    } {
+    function buildGlyphOutline(font: Font, char: string, fontSize: number): GlyphOutline {
+        const cached = glyphCache.get(char);
+        if (cached) return cached;
+
         const path = font.getPath(char, 0, 0, fontSize);
         const contours: THREE.Vector2[][] = [];
         let current: THREE.Vector2[] = [];
         let pen = new THREE.Vector2(0, 0);
         let start = new THREE.Vector2(0, 0);
 
-        for (const command of path.commands as any[]) {
+        for (const command of path.commands) {
             const type = command.type;
             if (type === 'M') {
                 if (current.length > 2) contours.push(current);
@@ -296,11 +473,13 @@
 
         const validContours = contours.filter((c) => c.length >= 2);
         if (validContours.length === 0) {
-            const dummy: THREE.Vector2[] = [
-                new THREE.Vector2(0, 0), new THREE.Vector2(1, 0),
-                new THREE.Vector2(1, 1), new THREE.Vector2(0, 1), new THREE.Vector2(0, 0)
-            ];
-            validContours.push(dummy);
+            validContours.push([
+                new THREE.Vector2(0, 0),
+                new THREE.Vector2(1, 0),
+                new THREE.Vector2(1, 1),
+                new THREE.Vector2(0, 1),
+                new THREE.Vector2(0, 0)
+            ]);
         }
 
         const sorted = validContours.sort((a, b) => contourPerimeter(b) - contourPerimeter(a));
@@ -317,14 +496,21 @@
                 globalMaxY = Math.max(globalMaxY, p.y);
             }
         }
-        if (!Number.isFinite(globalMinX)) { globalMinX = 0; globalMinY = 0; globalMaxX = 1; globalMaxY = 1; }
+        if (!Number.isFinite(globalMinX)) {
+            globalMinX = 0;
+            globalMinY = 0;
+            globalMaxX = 1;
+            globalMaxY = 1;
+        }
 
         const centerY = (globalMinY + globalMaxY) / 2;
         const width = Math.max(0.1, font.getAdvanceWidth(char, fontSize));
 
         const perContour = sorted.map((contour) => {
-            let cMinX = Number.POSITIVE_INFINITY, cMinY = Number.POSITIVE_INFINITY;
-            let cMaxX = Number.NEGATIVE_INFINITY, cMaxY = Number.NEGATIVE_INFINITY;
+            let cMinX = Number.POSITIVE_INFINITY;
+            let cMinY = Number.POSITIVE_INFINITY;
+            let cMaxX = Number.NEGATIVE_INFINITY;
+            let cMaxY = Number.NEGATIVE_INFINITY;
             for (const p of contour) {
                 cMinX = Math.min(cMinX, p.x);
                 cMinY = Math.min(cMinY, p.y);
@@ -338,11 +524,13 @@
             };
         });
 
-        return {
+        const result: GlyphOutline = {
             contours: perContour,
             width,
             bounds: { minX: globalMinX, minY: centerY - globalMaxY, maxX: globalMaxX, maxY: centerY - globalMinY }
         };
+        glyphCache.set(char, result);
+        return result;
     }
 
     function buildLengthTable(points: THREE.Vector3[]) {
@@ -355,11 +543,7 @@
         return { lengths, total: Math.max(total, 1e-6) };
     }
 
-    function mapPointsToBounds(
-        points: THREE.Vector3[],
-        source: { minX: number; minY: number; maxX: number; maxY: number },
-        target: { minX: number; minY: number; maxX: number; maxY: number }
-    ) {
+    function mapPointsToBounds(points: THREE.Vector3[], source: Bounds, target: Bounds) {
         const srcW = Math.max(1e-6, source.maxX - source.minX);
         const srcH = Math.max(1e-6, source.maxY - source.minY);
         const dstW = Math.max(1e-6, target.maxX - target.minX);
@@ -376,21 +560,63 @@
         );
     }
 
-    function rotateClosedPoints(points: THREE.Vector3[], startRatio: number) {
-        if (points.length < 3) return points;
-        const normalized = [...points];
-        if (normalized[0].distanceTo(normalized[normalized.length - 1]) < 1e-6) {
-            normalized.pop();
-        }
-        if (normalized.length < 2) return points;
+    function boundsFromArray(arr: ArrayLike<number>): Bounds | null {
+        if (arr.length < 4) return null;
+        return { minX: arr[0], minY: arr[1], maxX: arr[2], maxY: arr[3] };
+    }
 
-        const startIndex = Math.max(
-            0,
-            Math.min(normalized.length - 1, Math.floor(startRatio * normalized.length))
+    function getMappingBounds(fill: Text, glyph: GlyphOutline): Bounds {
+        const info = fill.textRenderInfo;
+        const block = boundsFromArray(info?.blockBounds ?? []);
+        const glyphBounds = boundsFromArray((info as { glyphBounds?: ArrayLike<number> } | undefined)?.glyphBounds ?? []);
+        const visibleBounds = boundsFromArray((info as { visibleBounds?: ArrayLike<number> } | undefined)?.visibleBounds ?? []);
+        return visibleBounds ?? glyphBounds ?? block ?? glyph.bounds;
+    }
+
+    function createFillText(char: string, textColor: number) {
+        const fill = new Text();
+        fill.text = char;
+        fill.font = spaceGroteskFontUrl;
+        fill.fontSize = letterFontSize;
+        fill.anchorX = 'left';
+        fill.anchorY = 'middle';
+        fill.color = textColor;
+        fill.fillOpacity = 1;
+        return fill;
+    }
+
+    function applyTextGroupScale(scale: number) {
+        if (!textGroup) return;
+        textGroup.scale.set(scale, scale, 1);
+        textGroup.position.x = -(labelWidth * scale) / 2;
+    }
+
+    function getLabelCenterLocal(out = labelCenter) {
+        out.set(labelWidth / 2, exitTextBaseY, 0);
+        return out;
+    }
+
+    function getVisibleFrustumSize(viewportWidth: number, viewportHeight: number) {
+        if (!camera) return { width: 0, height: 0 };
+        const distance = camera.position.z;
+        const fovRad = (camera.fov * Math.PI) / 180;
+        const height = 2 * Math.tan(fovRad / 2) * distance;
+        const width = height * (viewportWidth / viewportHeight);
+        return { width, height };
+    }
+
+    function fitTextToViewport(viewportWidth: number, viewportHeight: number) {
+        if (!textGroup || labelWidth <= 0 || labelHeight <= 0) return;
+
+        const { width: visibleWidth, height: visibleHeight } = getVisibleFrustumSize(
+            viewportWidth,
+            viewportHeight
         );
-        const rotated = [...normalized.slice(startIndex), ...normalized.slice(0, startIndex)];
-        rotated.push(rotated[0].clone());
-        return rotated;
+        const maxWidth = visibleWidth * (1 - viewportPaddingX * 2);
+        const maxHeight = visibleHeight * (1 - viewportPaddingY * 2);
+        const scale = Math.min(1, maxWidth / labelWidth, maxHeight / labelHeight);
+
+        applyTextGroupScale(scale);
     }
 
     function updateProjection() {
@@ -401,72 +627,84 @@
         camera.updateProjectionMatrix();
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.setSize(width, height, false);
+        fitTextToViewport(width, height);
+    }
+
+    function renderFrame() {
+        if (renderer && scene && camera && !disposed) {
+            renderer.render(scene, camera);
+        }
     }
 
     function animate(now: number) {
         if (!renderer || !scene || !camera || disposed) return;
 
+        const deltaMs = lastFrameTime > 0 ? now - lastFrameTime : 16.67;
+        lastFrameTime = now;
+
         if (reducedMotion) {
             for (const unit of letters) {
-                const fillMat = unit.fill.material as THREE.Material & { opacity?: number; transparent?: boolean };
-                if (fillMat) {
-                    fillMat.transparent = true;
-                    fillMat.opacity = 1;
-                }
+                const fillMat = unit.fill.material as THREE.Material & { opacity?: number };
+                if (fillMat) fillMat.opacity = 1;
             }
             tracingDone = true;
             tryExit();
-            renderer.render(scene, camera);
+            renderFrame();
             return;
         }
 
-        const elapsedMs = now - startedAt;
-        const elapsedTrace = Math.max(0, elapsedMs - introDelayMs);
-        const revealRaw = clamp01((elapsedMs - traceCompleteTargetMs) / revealFadeMs);
-        let allComplete = true;
+        const inExit = exitPhase !== 'idle' && exitPhase !== 'done';
+        let keepAnimating = false;
 
-        for (const unit of letters) {
-            if (!unit.completed) {
-                const linear = clamp01(elapsedTrace / unit.durationMs);
-                unit.progress = linear;
-                unit.completed = unit.progress >= 1;
-            }
-            const eased = unit.progress;
+        if (inExit) {
+            updateExitAnimation(now, deltaMs);
+            keepAnimating = exitPhase !== 'idle' && exitPhase !== 'done' && !completionFired;
+        } else {
+            const elapsedMs = now - startedAt;
+            const elapsedTrace = Math.max(0, elapsedMs - introDelayMs);
+            const revealRaw = clamp01((elapsedMs - traceCompleteTargetMs) / revealFadeMs);
+            let allComplete = true;
 
-            const fillMat = unit.fill.material as THREE.Material & { opacity?: number; transparent?: boolean };
-            if (fillMat) {
-                fillMat.transparent = true;
-                fillMat.opacity = revealRaw;
-            }
-
-            for (const t of unit.trails) {
-                const tGeom = t.line.geometry as THREE.BufferGeometry;
-                const targetDist = eased * t.total;
-                let trailCount = 0;
-                for (let i = 0; i < t.lengths.length; i++) {
-                    if (t.lengths[i] <= targetDist) trailCount = i + 1;
-                    else break;
+            for (const unit of letters) {
+                if (!unit.completed) {
+                    unit.progress = clamp01(elapsedTrace / unit.durationMs);
+                    unit.completed = unit.progress >= 1;
                 }
-                trailCount = Math.max(2, Math.min(t.points.length, trailCount));
-                tGeom.setDrawRange(0, trailCount);
-                t.line.visible = true;
+
+                const fillMat = unit.fill.material as THREE.Material & { opacity?: number };
+                if (fillMat) fillMat.opacity = revealRaw;
+
+                for (const t of unit.trails) {
+                    const tGeom = t.line.geometry as THREE.BufferGeometry;
+                    const targetDist = unit.progress * t.total;
+                    let trailCount = 0;
+                    for (let i = 0; i < t.lengths.length; i++) {
+                        if (t.lengths[i] <= targetDist) trailCount = i + 1;
+                        else break;
+                    }
+                    trailCount = Math.max(2, trailCount);
+                    tGeom.setDrawRange(0, trailCount);
+                    t.line.visible = true;
+                }
+
+                if (!unit.completed) allComplete = false;
             }
-            unit.trail.visible = true;
 
-            if (!unit.completed) allComplete = false;
+            if (allComplete && !tracingDone) {
+                tracingDone = true;
+                tryExit();
+            }
+
+            keepAnimating = !allComplete || revealRaw < 1 || exitPhase === 'push' || exitPhase === 'scatter' || exitPhase === 'fade';
         }
 
-        if (allComplete && !tracingDone) {
-            tracingDone = true;
-            tryExit();
-        }
-
-        if (!allComplete || revealRaw < 1) {
+        if (keepAnimating && !completionFired) {
             rafId = requestAnimationFrame(animate);
+        } else {
+            rafId = null;
         }
 
-        renderer.render(scene, camera);
-
+        renderFrame();
     }
 
     onMount(() => {
@@ -476,20 +714,11 @@
         isDark = darkQuery.matches;
         const onThemeChange = (e: MediaQueryListEvent) => {
             isDark = e.matches;
-            if (renderer) {
-                const newBg = isDark ? 0x02182b : 0xfdf7c3;
-                renderer.setClearColor(newBg, 1);
-            }
-            const newText = isDark ? 0xd7263d : 0xf0485f;
-            const newOutline = newText;
+            const colors = getColors(isDark);
+            if (renderer) renderer.setClearColor(colors.bg, 1);
+            trailMaterial?.color.set(colors.text);
             for (const unit of letters) {
-                unit.outline.color = newOutline;
-                unit.outline.strokeColor = newOutline;
-                unit.fill.color = newText;
-                for (const t of unit.trails) {
-                    const mat = t.line.material as THREE.LineBasicMaterial;
-                    mat.color.set(newOutline);
-                }
+                unit.fill.color = colors.text;
             }
             if (renderer && scene && camera) renderer.render(scene, camera);
         };
@@ -513,6 +742,8 @@
             tryExit();
         }, minDisplayMs);
 
+        const colors = getColors(isDark);
+
         renderer = new THREE.WebGLRenderer({
             canvas: canvasEl,
             antialias: true,
@@ -520,24 +751,31 @@
             powerPreference: 'high-performance'
         });
         renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.setClearColor(getColors(isDark).bg, 1);
+        renderer.setClearColor(colors.bg, 1);
 
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
         camera.position.set(0, 0, 9);
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.45);
-        scene.add(ambient);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.45));
 
-        pointLight = new THREE.PointLight(0x38bdf8, 2.2, 30, 2);
+        const pointLight = new THREE.PointLight(0x38bdf8, 2.2, 30, 2);
         pointLight.position.set(0, 0, 2.8);
         scene.add(pointLight);
 
         textGroup = new THREE.Group();
         scene.add(textGroup);
 
+        trailMaterial = new THREE.LineBasicMaterial({
+            color: colors.text,
+            transparent: true,
+            opacity: 0.6,
+            depthTest: false,
+            depthWrite: false
+        });
+
         void (async () => {
-            let font: any;
+            let font: Font;
             try {
                 font = await loadOpenTypeFont(spaceGroteskFontUrl);
             } catch (error) {
@@ -549,45 +787,33 @@
             }
             if (disposed) return;
 
-            let cursor = 0;
-            for (const char of Array.from(label)) {
-                if (disposed || !textGroup || !scene) return;
+            const jobs: LetterJob[] = [];
+            for (const char of label) {
                 if (char === ' ') {
+                    jobs.push({ kind: 'space' });
+                    continue;
+                }
+                jobs.push({ kind: 'letter', char, fill: createFillText(char, colors.text) });
+            }
+
+            await Promise.all(
+                jobs
+                    .filter((job): job is Extract<LetterJob, { kind: 'letter' }> => job.kind === 'letter')
+                    .map((job) => syncText(job.fill))
+            );
+            if (disposed) return;
+
+            let cursor = 0;
+            let labelMinY = Number.POSITIVE_INFINITY;
+            let labelMaxY = Number.NEGATIVE_INFINITY;
+            for (const job of jobs) {
+                if (disposed || !textGroup) return;
+                if (job.kind === 'space') {
                     cursor += spaceWidth;
                     continue;
                 }
 
-                const outline = new Text();
-                outline.text = char;
-                outline.font = spaceGroteskFontUrl;
-                outline.fontSize = letterFontSize;
-                outline.anchorX = 'left';
-                outline.anchorY = 'middle';
-                const _colors = getColors(isDark);
-                outline.color = _colors.text;
-                outline.fillOpacity = 0;
-                outline.strokeWidth = 0.045;
-                outline.strokeColor = _colors.text;
-                outline.strokeOpacity = 0;
-
-                const fill = new Text();
-                fill.text = char;
-                fill.font = spaceGroteskFontUrl;
-                fill.fontSize = letterFontSize;
-                fill.anchorX = 'left';
-                fill.anchorY = 'middle';
-                fill.color = _colors.text;
-                fill.fillOpacity = 1;
-
-                const group = new THREE.Group();
-                group.position.set(cursor, 0, 0);
-                group.add(outline);
-                group.add(fill);
-                textGroup.add(group);
-
-                await Promise.all([syncText(outline), syncText(fill)]);
-                if (disposed) return;
-
+                const { char, fill } = job;
                 const fillMat = fill.material as THREE.Material & { opacity?: number; transparent?: boolean };
                 if (fillMat) {
                     fillMat.transparent = true;
@@ -595,87 +821,36 @@
                 }
 
                 const glyph = buildGlyphOutline(font, char, letterFontSize);
-                const troikaBoundsArr = fill.textRenderInfo?.blockBounds ?? [
-                    glyph.bounds.minX,
-                    glyph.bounds.minY,
-                    glyph.bounds.maxX,
-                    glyph.bounds.maxY
-                ];
-                const troikaBounds = {
-                    minX: troikaBoundsArr[0],
-                    minY: troikaBoundsArr[1],
-                    maxX: troikaBoundsArr[2],
-                    maxY: troikaBoundsArr[3]
-                };
-                const troikaGlyphBoundsArr = (fill.textRenderInfo as any)?.glyphBounds as
-                    | ArrayLike<number>
-                    | undefined;
-                const troikaGlyphBounds =
-                    troikaGlyphBoundsArr && troikaGlyphBoundsArr.length >= 4
-                        ? {
-                              minX: troikaGlyphBoundsArr[0],
-                              minY: troikaGlyphBoundsArr[1],
-                              maxX: troikaGlyphBoundsArr[2],
-                              maxY: troikaGlyphBoundsArr[3]
-                          }
-                        : null;
-                const troikaVisibleBoundsArr = (fill.textRenderInfo as any)?.visibleBounds as
-                    | ArrayLike<number>
-                    | undefined;
-                const troikaVisibleBounds =
-                    troikaVisibleBoundsArr && troikaVisibleBoundsArr.length >= 4
-                        ? {
-                              minX: troikaVisibleBoundsArr[0],
-                              minY: troikaVisibleBoundsArr[1],
-                              maxX: troikaVisibleBoundsArr[2],
-                              maxY: troikaVisibleBoundsArr[3]
-                          }
-                        : null;
-                const mappingTargetBounds = troikaVisibleBounds ?? troikaGlyphBounds ?? troikaBounds;
-                const optLeft = mappingTargetBounds.minX;
-                const optRight = mappingTargetBounds.maxX;
-                const width = Math.max(0.1, optRight - optLeft);
-                group.position.x = cursor - optLeft;
+                const mappingTargetBounds = getMappingBounds(fill, glyph);
+                labelMinY = Math.min(labelMinY, mappingTargetBounds.minY);
+                labelMaxY = Math.max(labelMaxY, mappingTargetBounds.maxY);
+                const width = Math.max(0.1, mappingTargetBounds.maxX - mappingTargetBounds.minX);
+
+                const group = new THREE.Group();
+                group.position.set(cursor - mappingTargetBounds.minX, 0, 0);
+                group.add(fill);
+                textGroup.add(group);
 
                 const trails: LetterUnit['trails'] = [];
-                let longestTotal = 0;
-                let allFlatPoints: THREE.Vector3[] = [];
-                let allFlatLengths: number[] = [];
                 for (const contour of glyph.contours) {
-                    const cAligned = mapPointsToBounds(contour.points, glyph.bounds, mappingTargetBounds);
-                    const { lengths, total } = buildLengthTable(cAligned);
-                    const tGeom = new THREE.BufferGeometry().setFromPoints(cAligned);
+                    const aligned = mapPointsToBounds(contour.points, glyph.bounds, mappingTargetBounds);
+                    const { lengths, total } = buildLengthTable(aligned);
+                    const tGeom = new THREE.BufferGeometry().setFromPoints(aligned);
                     tGeom.setDrawRange(0, 0);
-                    const tMat = new THREE.LineBasicMaterial({
-                        color: _colors.text, transparent: true, opacity: 0.6,
-                        depthTest: false, depthWrite: false
-                    });
-                    const tLine = new THREE.Line(tGeom, tMat);
+                    const tLine = new THREE.Line(tGeom, trailMaterial!);
                     tLine.visible = false;
                     group.add(tLine);
-                    trails.push({ line: tLine, lengths, total, points: cAligned });
-                    longestTotal = Math.max(longestTotal, total);
-                    allFlatPoints = allFlatPoints.concat(cAligned);
-                    allFlatLengths = allFlatLengths.concat(lengths.map((l) => l + (allFlatLengths.length > 0 ? allFlatLengths[allFlatLengths.length - 1] : 0)));
+                    trails.push({ line: tLine, lengths, total });
                 }
-
-                const dummyGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0)]);
-                dummyGeom.setDrawRange(0, 0);
-                const dummyTrail = new THREE.Line(dummyGeom, new THREE.LineBasicMaterial({ visible: false }));
 
                 letters.push({
                     group,
-                    outline,
                     fill,
-                    trail: dummyTrail,
                     trails,
                     width,
                     durationMs: traceDurationMs,
                     progress: 0,
-                    completed: false,
-                    outlinePoints: allFlatPoints,
-                    outlineLengths: allFlatLengths,
-                    outlineTotal: longestTotal
+                    completed: false
                 });
 
                 cursor += width + letterSpacing;
@@ -683,16 +858,18 @@
 
             if (!textGroup || disposed) return;
 
-            const totalWidth = Math.max(0, cursor - letterSpacing);
-            textGroup.position.x = -totalWidth / 2;
-            textGroup.position.y = 0;
+            labelWidth = Math.max(0, cursor - letterSpacing);
+            labelHeight = Math.max(letterFontSize * 0.5, labelMaxY - labelMinY);
 
             updateProjection();
             startedAt = performance.now();
             rafId = requestAnimationFrame(animate);
         })();
 
-        const onResize = () => updateProjection();
+        const onResize = () => {
+            updateProjection();
+            renderFrame();
+        };
         window.addEventListener('resize', onResize);
         updateProjection();
 
@@ -707,56 +884,13 @@
     });
 </script>
 
-{#if isVisible || isExiting}
+{#if isVisible || isAnimatingExit}
 <div
     bind:this={hostEl}
-    class="fixed inset-0 z-9999 bg-[#FDF7C3] dark:bg-[#02182B] {isExiting ? 'pointer-events-none bg-transparent!' : ''}"
-    aria-hidden={slideOut}
+    class="fixed inset-0 z-9999 bg-[#FDF7C3] dark:bg-[#02182B] {isAnimatingExit ? 'pointer-events-none' : ''}"
+    style:opacity={hostOpacity}
+    aria-hidden={isAnimatingExit && hostOpacity < 0.5}
 >
-    {#if !isExiting}
-        <canvas bind:this={canvasEl} class="h-full w-full"></canvas>
-    {:else}
-        <div
-            class="absolute top-0 left-0 h-1/2 w-1/2 overflow-hidden bg-[#FDF7C3] will-change-transform dark:bg-[#02182B] {slideOut ? 'animate-quadrant-exit-tl' : ''}"
-            on:animationend={onQuadrantAnimationEnd}
-        >
-            {#if snapshotUrl}
-                <div
-                    class="absolute top-0 left-0 h-[200%] w-[200%] bg-size-[100%_100%] bg-no-repeat"
-                    style="background-image: url({snapshotUrl})"
-                ></div>
-            {/if}
-        </div>
-        <div
-            class="absolute top-0 right-0 h-1/2 w-1/2 overflow-hidden bg-[#FDF7C3] will-change-transform dark:bg-[#02182B] {slideOut ? 'animate-quadrant-exit-tr' : ''}"
-        >
-            {#if snapshotUrl}
-                <div
-                    class="absolute top-0 right-0 h-[200%] w-[200%] bg-size-[100%_100%] bg-no-repeat"
-                    style="background-image: url({snapshotUrl})"
-                ></div>
-            {/if}
-        </div>
-        <div
-            class="absolute bottom-0 left-0 h-1/2 w-1/2 overflow-hidden bg-[#FDF7C3] will-change-transform dark:bg-[#02182B] {slideOut ? 'animate-quadrant-exit-bl' : ''}"
-        >
-            {#if snapshotUrl}
-                <div
-                    class="absolute bottom-0 left-0 h-[200%] w-[200%] bg-size-[100%_100%] bg-no-repeat"
-                    style="background-image: url({snapshotUrl})"
-                ></div>
-            {/if}
-        </div>
-        <div
-            class="absolute right-0 bottom-0 h-1/2 w-1/2 overflow-hidden bg-[#FDF7C3] will-change-transform dark:bg-[#02182B] {slideOut ? 'animate-quadrant-exit-br' : ''}"
-        >
-            {#if snapshotUrl}
-                <div
-                    class="absolute right-0 bottom-0 h-[200%] w-[200%] bg-size-[100%_100%] bg-no-repeat"
-                    style="background-image: url({snapshotUrl})"
-                ></div>
-            {/if}
-        </div>
-    {/if}
+    <canvas bind:this={canvasEl} class="h-full w-full"></canvas>
 </div>
 {/if}
