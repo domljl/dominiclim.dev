@@ -1,6 +1,21 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import * as THREE from 'three/src/Three.js';
+    import {
+        BufferAttribute,
+        BufferGeometry,
+        Group,
+        Line,
+        LineBasicMaterial,
+        Material,
+        PerspectiveCamera,
+        Points,
+        PointsMaterial,
+        Scene,
+        SRGBColorSpace,
+        Vector2,
+        Vector3,
+        WebGLRenderer
+    } from 'three';
     import { Text } from 'troika-three-text';
     import { parse as openTypeParse } from 'opentype.js';
     import type { Font } from 'opentype.js';
@@ -37,9 +52,9 @@
     type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
     type LetterUnit = {
-        group: THREE.Group;
+        group: Group;
         fill: Text;
-        trails: { line: THREE.Line; lengths: number[]; total: number }[];
+        trails: { line: Line; lengths: number[]; total: number }[];
         width: number;
         durationMs: number;
         progress: number;
@@ -47,7 +62,7 @@
     };
 
     type GlyphOutline = {
-        contours: { points: THREE.Vector3[]; bounds: Bounds }[];
+        contours: { points: Vector3[]; bounds: Bounds }[];
         width: number;
         bounds: Bounds;
     };
@@ -77,15 +92,15 @@
     let exitFallbackTimer: ReturnType<typeof setTimeout> | null = null;
     let rafId: number | null = null;
 
-    let renderer: THREE.WebGLRenderer | null = null;
-    let scene: THREE.Scene | null = null;
-    let camera: THREE.PerspectiveCamera | null = null;
-    let textGroup: THREE.Group | null = null;
-    let trailMaterial: THREE.LineBasicMaterial | null = null;
-    let particles: THREE.Points | null = null;
-    let particleMaterial: THREE.PointsMaterial | null = null;
+    let renderer: WebGLRenderer | null = null;
+    let scene: Scene | null = null;
+    let camera: PerspectiveCamera | null = null;
+    let textGroup: Group | null = null;
+    let trailMaterial: LineBasicMaterial | null = null;
+    let particles: Points | null = null;
+    let particleMaterial: PointsMaterial | null = null;
     let particleVelocities: Float32Array | null = null;
-    let labelCenter = new THREE.Vector3();
+    let labelCenter = new Vector3();
     let labelWidth = 0;
     let labelHeight = letterFontSize;
     let disposed = false;
@@ -169,12 +184,12 @@
         labelCenter.copy(getLabelCenterLocal());
         textGroup.localToWorld(labelCenter);
 
-        const worldPoints: THREE.Vector3[] = [];
-        const temp = new THREE.Vector3();
+        const worldPoints: Vector3[] = [];
+        const temp = new Vector3();
 
         for (const unit of letters) {
             for (const t of unit.trails) {
-                const geom = t.line.geometry as THREE.BufferGeometry;
+                const geom = t.line.geometry as BufferGeometry;
                 const pos = geom.getAttribute('position');
                 for (let i = 0; i < pos.count; i += 1) {
                     temp.fromBufferAttribute(pos, i);
@@ -212,15 +227,15 @@
 
         if (particleIndex === 0) return;
 
-        const geom = new THREE.BufferGeometry();
+        const geom = new BufferGeometry();
         geom.setAttribute(
             'position',
-            new THREE.BufferAttribute(positions.slice(0, particleIndex * 3), 3)
+            new BufferAttribute(positions.slice(0, particleIndex * 3), 3)
         );
         particleVelocities = particleVelocities.slice(0, particleIndex * 3);
 
         const colors = getThemeColors(isDark);
-        particleMaterial = new THREE.PointsMaterial({
+        particleMaterial = new PointsMaterial({
             color: colors.text,
             size: getResponsiveParticleSize(),
             sizeAttenuation: false,
@@ -230,11 +245,11 @@
             depthTest: false
         });
 
-        particles = new THREE.Points(geom, particleMaterial);
+        particles = new Points(geom, particleMaterial);
         scene.add(particles);
 
         for (const unit of letters) {
-            const fillMat = unit.fill.material as THREE.Material & { opacity?: number };
+            const fillMat = unit.fill.material as Material & { opacity?: number };
             if (fillMat) fillMat.opacity = 0;
             unit.fill.visible = false;
             for (const t of unit.trails) {
@@ -259,7 +274,7 @@
 
     function updateParticlePositions(deltaMs: number) {
         if (!particles || !particleVelocities || !particleMaterial) return;
-        const posAttr = particles.geometry.getAttribute('position') as THREE.BufferAttribute;
+        const posAttr = particles.geometry.getAttribute('position') as BufferAttribute;
         const dt = Math.min(deltaMs, 32) / 16.67;
         for (let i = 0; i < posAttr.count; i += 1) {
             posAttr.setX(i, posAttr.getX(i) + particleVelocities[i * 3] * dt);
@@ -308,7 +323,7 @@
         for (const unit of letters) {
             unit.fill.dispose();
             for (const t of unit.trails) {
-                (t.line.geometry as THREE.BufferGeometry).dispose();
+                (t.line.geometry as BufferGeometry).dispose();
             }
         }
         letters.length = 0;
@@ -351,9 +366,9 @@
     }
 
     function sampleLine(
-        points: THREE.Vector2[],
-        from: THREE.Vector2,
-        to: THREE.Vector2,
+        points: Vector2[],
+        from: Vector2,
+        to: Vector2,
         minSteps = 4
     ) {
         const distance = from.distanceTo(to);
@@ -361,15 +376,15 @@
         const steps = Math.max(minSteps, Math.ceil(distance / maxGap));
         for (let i = 1; i <= steps; i += 1) {
             const t = i / steps;
-            points.push(new THREE.Vector2(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t));
+            points.push(new Vector2(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t));
         }
     }
 
     function sampleQuadratic(
-        points: THREE.Vector2[],
-        from: THREE.Vector2,
-        cp: THREE.Vector2,
-        to: THREE.Vector2
+        points: Vector2[],
+        from: Vector2,
+        cp: Vector2,
+        to: Vector2
     ) {
         const estimate = from.distanceTo(cp) + cp.distanceTo(to);
         const maxGap = 0.015;
@@ -378,7 +393,7 @@
             const t = i / steps;
             const mt = 1 - t;
             points.push(
-                new THREE.Vector2(
+                new Vector2(
                     mt * mt * from.x + 2 * mt * t * cp.x + t * t * to.x,
                     mt * mt * from.y + 2 * mt * t * cp.y + t * t * to.y
                 )
@@ -387,11 +402,11 @@
     }
 
     function sampleCubic(
-        points: THREE.Vector2[],
-        from: THREE.Vector2,
-        cp1: THREE.Vector2,
-        cp2: THREE.Vector2,
-        to: THREE.Vector2
+        points: Vector2[],
+        from: Vector2,
+        cp1: Vector2,
+        cp2: Vector2,
+        to: Vector2
     ) {
         const estimate = from.distanceTo(cp1) + cp1.distanceTo(cp2) + cp2.distanceTo(to);
         const maxGap = 0.015;
@@ -400,7 +415,7 @@
             const t = i / steps;
             const mt = 1 - t;
             points.push(
-                new THREE.Vector2(
+                new Vector2(
                     mt * mt * mt * from.x +
                         3 * mt * mt * t * cp1.x +
                         3 * mt * t * t * cp2.x +
@@ -419,32 +434,32 @@
         if (cached) return cached;
 
         const path = font.getPath(char, 0, 0, fontSize);
-        const contours: THREE.Vector2[][] = [];
-        let current: THREE.Vector2[] = [];
-        let pen = new THREE.Vector2(0, 0);
-        let start = new THREE.Vector2(0, 0);
+        const contours: Vector2[][] = [];
+        let current: Vector2[] = [];
+        let pen = new Vector2(0, 0);
+        let start = new Vector2(0, 0);
 
         for (const command of path.commands) {
             const type = command.type;
             if (type === 'M') {
                 if (current.length > 2) contours.push(current);
                 current = [];
-                pen = new THREE.Vector2(command.x ?? 0, command.y ?? 0);
+                pen = new Vector2(command.x ?? 0, command.y ?? 0);
                 start = pen.clone();
                 current.push(pen.clone());
             } else if (type === 'L') {
-                const to = new THREE.Vector2(command.x ?? pen.x, command.y ?? pen.y);
+                const to = new Vector2(command.x ?? pen.x, command.y ?? pen.y);
                 sampleLine(current, pen, to);
                 pen = to;
             } else if (type === 'Q') {
-                const cp = new THREE.Vector2(command.x1 ?? pen.x, command.y1 ?? pen.y);
-                const to = new THREE.Vector2(command.x ?? pen.x, command.y ?? pen.y);
+                const cp = new Vector2(command.x1 ?? pen.x, command.y1 ?? pen.y);
+                const to = new Vector2(command.x ?? pen.x, command.y ?? pen.y);
                 sampleQuadratic(current, pen, cp, to);
                 pen = to;
             } else if (type === 'C') {
-                const cp1 = new THREE.Vector2(command.x1 ?? pen.x, command.y1 ?? pen.y);
-                const cp2 = new THREE.Vector2(command.x2 ?? pen.x, command.y2 ?? pen.y);
-                const to = new THREE.Vector2(command.x ?? pen.x, command.y ?? pen.y);
+                const cp1 = new Vector2(command.x1 ?? pen.x, command.y1 ?? pen.y);
+                const cp2 = new Vector2(command.x2 ?? pen.x, command.y2 ?? pen.y);
+                const to = new Vector2(command.x ?? pen.x, command.y ?? pen.y);
                 sampleCubic(current, pen, cp1, cp2, to);
                 pen = to;
             } else if (type === 'Z') {
@@ -457,7 +472,7 @@
         }
         if (current.length > 2) contours.push(current);
 
-        const contourPerimeter = (contour: THREE.Vector2[]) => {
+        const contourPerimeter = (contour: Vector2[]) => {
             let total = 0;
             for (let i = 1; i < contour.length; i += 1) {
                 total += contour[i - 1].distanceTo(contour[i]);
@@ -468,11 +483,11 @@
         const validContours = contours.filter((c) => c.length >= 2);
         if (validContours.length === 0) {
             validContours.push([
-                new THREE.Vector2(0, 0),
-                new THREE.Vector2(1, 0),
-                new THREE.Vector2(1, 1),
-                new THREE.Vector2(0, 1),
-                new THREE.Vector2(0, 0)
+                new Vector2(0, 0),
+                new Vector2(1, 0),
+                new Vector2(1, 1),
+                new Vector2(0, 1),
+                new Vector2(0, 0)
             ]);
         }
 
@@ -511,7 +526,7 @@
                 cMaxX = Math.max(cMaxX, p.x);
                 cMaxY = Math.max(cMaxY, p.y);
             }
-            const points3D = contour.map((p) => new THREE.Vector3(p.x, centerY - p.y, 0));
+            const points3D = contour.map((p) => new Vector3(p.x, centerY - p.y, 0));
             return {
                 points: points3D,
                 bounds: { minX: cMinX, minY: centerY - cMaxY, maxX: cMaxX, maxY: centerY - cMinY }
@@ -527,7 +542,7 @@
         return result;
     }
 
-    function buildLengthTable(points: THREE.Vector3[]) {
+    function buildLengthTable(points: Vector3[]) {
         const lengths: number[] = [0];
         let total = 0;
         for (let i = 1; i < points.length; i += 1) {
@@ -537,7 +552,7 @@
         return { lengths, total: Math.max(total, 1e-6) };
     }
 
-    function mapPointsToBounds(points: THREE.Vector3[], source: Bounds, target: Bounds) {
+    function mapPointsToBounds(points: Vector3[], source: Bounds, target: Bounds) {
         const srcW = Math.max(1e-6, source.maxX - source.minX);
         const srcH = Math.max(1e-6, source.maxY - source.minY);
         const dstW = Math.max(1e-6, target.maxX - target.minX);
@@ -546,7 +561,7 @@
         const sy = dstH / srcH;
         return points.map(
             (p) =>
-                new THREE.Vector3(
+                new Vector3(
                     target.minX + (p.x - source.minX) * sx,
                     target.minY + (p.y - source.minY) * sy,
                     p.z
@@ -638,7 +653,7 @@
 
         if (reducedMotion) {
             for (const unit of letters) {
-                const fillMat = unit.fill.material as THREE.Material & { opacity?: number };
+                const fillMat = unit.fill.material as Material & { opacity?: number };
                 if (fillMat) fillMat.opacity = 1;
             }
             tracingDone = true;
@@ -665,11 +680,11 @@
                     unit.completed = unit.progress >= 1;
                 }
 
-                const fillMat = unit.fill.material as THREE.Material & { opacity?: number };
+                const fillMat = unit.fill.material as Material & { opacity?: number };
                 if (fillMat) fillMat.opacity = revealRaw;
 
                 for (const t of unit.trails) {
-                    const tGeom = t.line.geometry as THREE.BufferGeometry;
+                    const tGeom = t.line.geometry as BufferGeometry;
                     const targetDist = unit.progress * t.total;
                     let trailCount = 0;
                     for (let i = 0; i < t.lengths.length; i++) {
@@ -735,29 +750,23 @@
 
         const colors = getThemeColors(isDark);
 
-        renderer = new THREE.WebGLRenderer({
+        renderer = new WebGLRenderer({
             canvas: canvasEl,
             antialias: true,
             alpha: false,
             powerPreference: 'high-performance'
         });
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.outputColorSpace = SRGBColorSpace;
         renderer.setClearColor(colors.bg, 1);
 
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        scene = new Scene();
+        camera = new PerspectiveCamera(40, 1, 0.1, 100);
         camera.position.set(0, 0, 9);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.45));
-
-        const pointLight = new THREE.PointLight(0x38bdf8, 2.2, 30, 2);
-        pointLight.position.set(0, 0, 2.8);
-        scene.add(pointLight);
-
-        textGroup = new THREE.Group();
+        textGroup = new Group();
         scene.add(textGroup);
 
-        trailMaterial = new THREE.LineBasicMaterial({
+        trailMaterial = new LineBasicMaterial({
             color: colors.text,
             transparent: true,
             opacity: 0.6,
@@ -805,7 +814,7 @@
                 }
 
                 const { char, fill } = job;
-                const fillMat = fill.material as THREE.Material & { opacity?: number; transparent?: boolean };
+                const fillMat = fill.material as Material & { opacity?: number; transparent?: boolean };
                 if (fillMat) {
                     fillMat.transparent = true;
                     fillMat.opacity = 0;
@@ -817,7 +826,7 @@
                 labelMaxY = Math.max(labelMaxY, mappingTargetBounds.maxY);
                 const width = Math.max(0.1, mappingTargetBounds.maxX - mappingTargetBounds.minX);
 
-                const group = new THREE.Group();
+                const group = new Group();
                 group.position.set(cursor - mappingTargetBounds.minX, 0, 0);
                 group.add(fill);
                 textGroup.add(group);
@@ -826,9 +835,9 @@
                 for (const contour of glyph.contours) {
                     const aligned = mapPointsToBounds(contour.points, glyph.bounds, mappingTargetBounds);
                     const { lengths, total } = buildLengthTable(aligned);
-                    const tGeom = new THREE.BufferGeometry().setFromPoints(aligned);
+                    const tGeom = new BufferGeometry().setFromPoints(aligned);
                     tGeom.setDrawRange(0, 0);
-                    const tLine = new THREE.Line(tGeom, trailMaterial!);
+                    const tLine = new Line(tGeom, trailMaterial!);
                     tLine.visible = false;
                     group.add(tLine);
                     trails.push({ line: tLine, lengths, total });
@@ -878,7 +887,7 @@
 {#if isVisible || isAnimatingExit}
 <div
     bind:this={hostEl}
-    class="fixed inset-0 z-9999 bg-[var(--background)] {isAnimatingExit ? 'pointer-events-none' : ''}"
+    class="fixed inset-0 z-9999 bg-(--background) {isAnimatingExit ? 'pointer-events-none' : ''}"
     style:opacity={hostOpacity}
     aria-hidden={isAnimatingExit && hostOpacity < 0.5}
 >
