@@ -1,4 +1,5 @@
 ---
+import BackToTop from '@/components/BackToTop.svelte';
 import LoadingScreen from '@/components/LoadingScreen.svelte';
 import LogoLink from '@/components/LogoLink.svelte';
 import NavBar from '@/components/NavBar.svelte';
@@ -35,12 +36,15 @@ import '@/styles/global.css';
         >
             <LogoLink client:load />
             <div
-                class="pointer-events-auto absolute left-1/2 w-max max-w-[calc(100%-9rem)] -translate-x-1/2"
+                class="pointer-events-auto lg:absolute lg:left-1/2 lg:w-max lg:max-w-[calc(100%-9rem)] lg:-translate-x-1/2"
             >
                 <NavBar client:load />
             </div>
-            <ThemeToggle client:load />
+            <div class="pointer-events-auto hidden lg:block">
+                <ThemeToggle client:load />
+            </div>
         </header>
         <slot />
+        <BackToTop client:load />
     </body>
 </html>
