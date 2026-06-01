@@ -105,18 +105,18 @@
         class="relative w-full overflow-hidden rounded-full bg-transparent shadow-[0_8px_32px_rgba(0,0,0,0.22)]"
     >
         <div
-            class="{glassLayer} z-[1] backdrop-blur-[4px] [filter:url(#glass-distortion)_saturate(120%)_brightness(1.15)]"
+            class="{glassLayer} z-1 backdrop-blur-xs filter-[url(#glass-distortion)_saturate(120%)_brightness(1.15)]"
             aria-hidden="true"
         ></div>
-        <div class="{glassLayer} z-[2] bg-white/25 dark:bg-black/25" aria-hidden="true"></div>
+        <div class="{glassLayer} z-2 bg-white/25 dark:bg-black/25" aria-hidden="true"></div>
         <div
-            class="{glassLayer} z-[3] shadow-[inset_1px_1px_1px_rgba(255,255,255,0.75)] dark:shadow-[inset_1px_1px_1px_rgba(255,255,255,0.15)]"
+            class="{glassLayer} z-3 shadow-[inset_1px_1px_1px_rgba(255,255,255,0.75)] dark:shadow-[inset_1px_1px_1px_rgba(255,255,255,0.15)]"
             style:background={specularHighlight}
             aria-hidden="true"
         ></div>
 
         <ul
-            class="relative z-[4] m-0 flex list-none items-center justify-center gap-3 px-5 py-3 sm:gap-5 sm:px-10 sm:py-4"
+            class="relative z-4 m-0 flex list-none items-center justify-center gap-3 px-5 py-3 sm:gap-5 sm:px-10 sm:py-4"
         >
             {#each links as link (link.href)}
                 {@const isActive = activeSection === link.href}
