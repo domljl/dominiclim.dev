@@ -23,10 +23,9 @@
     import { getThemeColors, subscribeToColorScheme } from '@/lib/theme';
 
     export let visible = true;
-    export let onComplete: () => void = () => {};
 
     const label = 'Dominic Lim';
-    const minDisplayMs = 4000;
+    const minDisplayMs = 3150;
     const introDelayMs = 220;
     const traceCompleteTargetMs = 2300;
     const traceDurationMs = traceCompleteTargetMs - introDelayMs;
@@ -36,8 +35,7 @@
     const spaceWidth = 0.5;
     const exitPushMs = 600;
     const exitScatterMs = 2800;
-    const exitFadeMs = 800;
-    const exitTotalMs = exitPushMs + exitScatterMs + exitFadeMs;
+    const exitTotalMs = exitPushMs + exitScatterMs;
     const exitScaleBoost = 1.08;
     const exitParticleCount = 400;
     const exitParticleSpeed = 0.32;
@@ -118,6 +116,12 @@
 
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
+    function makeExitCanvasTransparent() {
+        if (!renderer) return;
+        const colors = getThemeColors(isDark);
+        renderer.setClearColor(colors.bg, 0);
+    }
+
     function completeExit() {
         if (completionFired) return;
         completionFired = true;
@@ -129,14 +133,12 @@
         isAnimatingExit = false;
         isVisible = false;
         hostOpacity = 0;
-        onComplete();
     }
 
     function finishExitAnimation() {
         if (completionFired || disposed) return;
-        exitPhase = 'done';
-        disposeSceneResources();
         completeExit();
+        requestAnimationFrame(() => disposeSceneResources());
     }
 
     function tryExit() {
@@ -160,7 +162,7 @@
         exitTextBaseY = textGroup?.position.y ?? 0;
         exitTextBaseScale = textGroup?.scale.x ?? 1;
 
-        exitFallbackTimer = setTimeout(() => finishExitAnimation(), exitTotalMs + 200);
+        exitFallbackTimer = setTimeout(() => finishExitAnimation(), exitTotalMs);
 
         if (rafId === null) {
             rafId = requestAnimationFrame(animate);
@@ -180,6 +182,7 @@
     function spawnParticles() {
         if (!scene || !textGroup || particlesSpawned) return;
         particlesSpawned = true;
+        makeExitCanvasTransparent();
 
         labelCenter.copy(getLabelCenterLocal());
         textGroup.localToWorld(labelCenter);
@@ -284,33 +287,38 @@
         posAttr.needsUpdate = true;
     }
 
+    function applyExitFade(exitElapsed: number) {
+        const hostFade = applyHostFade(exitElapsed);
+        hostOpacity = 1 - hostFade;
+        const particleOpacity = particleMaterial ? 1 - applyParticleFade(exitElapsed) : 1;
+        if (particleMaterial) particleMaterial.opacity = particleOpacity;
+        return hostFade;
+    }
+
+    function isHostFadeComplete(exitElapsed: number) {
+        return applyHostFade(exitElapsed) >= 1;
+    }
+
     function updateExitAnimation(now: number, deltaMs: number) {
         if (disposed || !camera || !textGroup || exitPhase === 'idle' || exitPhase === 'done') return;
 
         const exitElapsed = now - exitStartedAt;
         const scatterStart = exitPushMs;
-        const fadeStart = exitPushMs + exitScatterMs;
 
         if (exitElapsed < scatterStart) {
             exitPhase = 'push';
             const t = easeOut(clamp01(exitElapsed / exitPushMs));
             const scale = exitTextBaseScale * (1 + (exitScaleBoost - 1) * t);
             applyTextGroupScale(scale);
-        } else if (exitElapsed < fadeStart) {
+        } else {
             exitPhase = 'scatter';
             spawnParticles();
             updateParticlePositions(deltaMs);
+            applyExitFade(exitElapsed);
 
-            hostOpacity = 1 - applyHostFade(exitElapsed);
-            if (particleMaterial) particleMaterial.opacity = 1 - applyParticleFade(exitElapsed);
-        } else if (exitElapsed < exitTotalMs) {
-            exitPhase = 'fade';
-            updateParticlePositions(deltaMs);
-
-            hostOpacity = 1 - applyHostFade(exitElapsed);
-            if (particleMaterial) particleMaterial.opacity = 1 - applyParticleFade(exitElapsed);
-        } else {
-            finishExitAnimation();
+            if (isHostFadeComplete(exitElapsed)) {
+                finishExitAnimation();
+            }
         }
     }
 
@@ -646,10 +654,17 @@
     }
 
     function animate(now: number) {
-        if (!renderer || !scene || !camera || disposed) return;
+        if (disposed) return;
 
         const deltaMs = lastFrameTime > 0 ? now - lastFrameTime : 16.67;
         lastFrameTime = now;
+
+        if (!renderer || !scene || !camera) {
+            if (exitStarted && !completionFired) {
+                rafId = requestAnimationFrame(animate);
+            }
+            return;
+        }
 
         if (reducedMotion) {
             for (const unit of letters) {
@@ -753,7 +768,7 @@
         renderer = new WebGLRenderer({
             canvas: canvasEl,
             antialias: true,
-            alpha: false,
+            alpha: true,
             powerPreference: 'high-performance'
         });
         renderer.outputColorSpace = SRGBColorSpace;
@@ -887,10 +902,13 @@
 {#if isVisible || isAnimatingExit}
 <div
     bind:this={hostEl}
-    class="fixed inset-0 z-9999 bg-(--background) {isAnimatingExit ? 'pointer-events-none' : ''}"
-    style:opacity={hostOpacity}
-    aria-hidden={isAnimatingExit && hostOpacity < 0.5}
+    class="fixed inset-0 z-9999 {isAnimatingExit ? 'pointer-events-none' : ''}"
 >
-    <canvas bind:this={canvasEl} class="h-full w-full"></canvas>
+    <div
+        class="absolute inset-0 bg-(--background)"
+        style:opacity={hostOpacity}
+        aria-hidden={isAnimatingExit && hostOpacity < 0.5}
+    ></div>
+    <canvas bind:this={canvasEl} class="relative h-full w-full"></canvas>
 </div>
 {/if}

@@ -1,5 +1,8 @@
 ---
 import LoadingScreen from '@/components/LoadingScreen.svelte';
+import LogoLink from '@/components/LogoLink.svelte';
+import NavBar from '@/components/NavBar.svelte';
+import ThemeToggle from '@/components/ThemeToggle.svelte';
 import '@/styles/global.css';
 ---
 
@@ -11,9 +14,33 @@ import '@/styles/global.css';
         <meta name="viewport" content="width=device-width" />
         <meta name="generator" content={Astro.generator} />
         <title>Dominic Lim</title>
+        <script is:inline>
+            (function () {
+                const stored = localStorage.getItem('theme');
+                const theme =
+                    stored === 'light' || stored === 'dark'
+                        ? stored
+                        : window.matchMedia('(prefers-color-scheme: dark)').matches
+                          ? 'dark'
+                          : 'light';
+                document.documentElement.classList.add(theme);
+                document.documentElement.style.colorScheme = theme;
+            })();
+        </script>
     </head>
     <body class="antialiased">
-        <LoadingScreen client:only="svelte" visible={true} />
+        <!-- <LoadingScreen client:only="svelte" visible={true} /> -->
+        <header
+            class="pointer-events-none fixed top-11 right-4 left-4 z-50 flex items-center justify-between"
+        >
+            <LogoLink client:load />
+            <div
+                class="pointer-events-auto absolute left-1/2 w-max max-w-[calc(100%-9rem)] -translate-x-1/2"
+            >
+                <NavBar client:load />
+            </div>
+            <ThemeToggle client:load />
+        </header>
         <slot />
     </body>
 </html>
