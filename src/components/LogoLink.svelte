@@ -1,9 +1,9 @@
 <script lang="ts">
-    import Logo from '@/components/Logo.svelte';
+    import Logo from "@/components/Logo.svelte";
 
     const scrollToTop = (event: MouseEvent) => {
         event.preventDefault();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 </script>
 

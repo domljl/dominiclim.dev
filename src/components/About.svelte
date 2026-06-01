@@ -25,8 +25,8 @@
             <p
                 class="m-0 max-w-lg text-lg leading-relaxed text-[color-mix(in_srgb,var(--foreground)_85%,transparent)] md:text-xl"
             >
-                I am passionate about coding, solving complex problems, and building useful projects
-                that make a difference!
+                I am passionate about coding, solving complex problems, and building useful projects that make
+                a difference!
             </p>
         </div>
     </div>

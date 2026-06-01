@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount } from "svelte";
     import {
         BufferAttribute,
         BufferGeometry,
@@ -14,17 +14,17 @@
         SRGBColorSpace,
         Vector2,
         Vector3,
-        WebGLRenderer
-    } from 'three';
-    import { Text } from 'troika-three-text';
-    import { parse as openTypeParse } from 'opentype.js';
-    import type { Font } from 'opentype.js';
-    import spaceGroteskFontUrl from '@/assets/fonts/SpaceGrotesk-500.ttf?url';
-    import { getThemeColors, subscribeToColorScheme } from '@/lib/theme';
+        WebGLRenderer,
+    } from "three";
+    import { Text } from "troika-three-text";
+    import { parse as openTypeParse } from "opentype.js";
+    import type { Font } from "opentype.js";
+    import spaceGroteskFontUrl from "@/assets/fonts/SpaceGrotesk-500.ttf?url";
+    import { getThemeColors, subscribeToColorScheme } from "@/lib/theme";
 
     export let visible = true;
 
-    const label = 'Dominic Lim';
+    const label = "Dominic Lim";
     const minDisplayMs = 3150;
     const introDelayMs = 220;
     const traceCompleteTargetMs = 2300;
@@ -46,7 +46,7 @@
     const viewportPaddingX = 0.1;
     const viewportPaddingY = 0.14;
 
-    type ExitPhase = 'idle' | 'push' | 'scatter' | 'fade' | 'done';
+    type ExitPhase = "idle" | "push" | "scatter" | "fade" | "done";
     type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
     type LetterUnit = {
@@ -65,7 +65,7 @@
         bounds: Bounds;
     };
 
-    type LetterJob = { kind: 'space' } | { kind: 'letter'; char: string; fill: Text };
+    type LetterJob = { kind: "space" } | { kind: "letter"; char: string; fill: Text };
 
     let hostEl: HTMLDivElement | null = null;
     let canvasEl: HTMLCanvasElement | null = null;
@@ -73,7 +73,7 @@
     let isAnimatingExit = false;
     let hostOpacity = 1;
     let exitStarted = false;
-    let exitPhase: ExitPhase = 'idle';
+    let exitPhase: ExitPhase = "idle";
     let exitStartedAt = 0;
     let exitTextBaseY = 0;
     let exitTextBaseScale = 1;
@@ -129,7 +129,7 @@
             clearTimeout(exitFallbackTimer);
             exitFallbackTimer = null;
         }
-        exitPhase = 'done';
+        exitPhase = "done";
         isAnimatingExit = false;
         isVisible = false;
         hostOpacity = 0;
@@ -155,7 +155,7 @@
             return;
         }
 
-        exitPhase = 'push';
+        exitPhase = "push";
         exitStartedAt = performance.now();
         hostOpacity = 1;
         particlesSpawned = false;
@@ -193,7 +193,7 @@
         for (const unit of letters) {
             for (const t of unit.trails) {
                 const geom = t.line.geometry as BufferGeometry;
-                const pos = geom.getAttribute('position');
+                const pos = geom.getAttribute("position");
                 for (let i = 0; i < pos.count; i += 1) {
                     temp.fromBufferAttribute(pos, i);
                     unit.group.localToWorld(temp);
@@ -231,10 +231,7 @@
         if (particleIndex === 0) return;
 
         const geom = new BufferGeometry();
-        geom.setAttribute(
-            'position',
-            new BufferAttribute(positions.slice(0, particleIndex * 3), 3)
-        );
+        geom.setAttribute("position", new BufferAttribute(positions.slice(0, particleIndex * 3), 3));
         particleVelocities = particleVelocities.slice(0, particleIndex * 3);
 
         const colors = getThemeColors(isDark);
@@ -245,7 +242,7 @@
             transparent: true,
             opacity: 1,
             depthWrite: false,
-            depthTest: false
+            depthTest: false,
         });
 
         particles = new Points(geom, particleMaterial);
@@ -277,7 +274,7 @@
 
     function updateParticlePositions(deltaMs: number) {
         if (!particles || !particleVelocities || !particleMaterial) return;
-        const posAttr = particles.geometry.getAttribute('position') as BufferAttribute;
+        const posAttr = particles.geometry.getAttribute("position") as BufferAttribute;
         const dt = Math.min(deltaMs, 32) / 16.67;
         for (let i = 0; i < posAttr.count; i += 1) {
             posAttr.setX(i, posAttr.getX(i) + particleVelocities[i * 3] * dt);
@@ -300,18 +297,18 @@
     }
 
     function updateExitAnimation(now: number, deltaMs: number) {
-        if (disposed || !camera || !textGroup || exitPhase === 'idle' || exitPhase === 'done') return;
+        if (disposed || !camera || !textGroup || exitPhase === "idle" || exitPhase === "done") return;
 
         const exitElapsed = now - exitStartedAt;
         const scatterStart = exitPushMs;
 
         if (exitElapsed < scatterStart) {
-            exitPhase = 'push';
+            exitPhase = "push";
             const t = easeOut(clamp01(exitElapsed / exitPushMs));
             const scale = exitTextBaseScale * (1 + (exitScaleBoost - 1) * t);
             applyTextGroupScale(scale);
         } else {
-            exitPhase = 'scatter';
+            exitPhase = "scatter";
             spawnParticles();
             updateParticlePositions(deltaMs);
             applyExitFade(exitElapsed);
@@ -373,12 +370,7 @@
             .then((buffer) => openTypeParse(buffer));
     }
 
-    function sampleLine(
-        points: Vector2[],
-        from: Vector2,
-        to: Vector2,
-        minSteps = 4
-    ) {
+    function sampleLine(points: Vector2[], from: Vector2, to: Vector2, minSteps = 4) {
         const distance = from.distanceTo(to);
         const maxGap = 0.015;
         const steps = Math.max(minSteps, Math.ceil(distance / maxGap));
@@ -388,12 +380,7 @@
         }
     }
 
-    function sampleQuadratic(
-        points: Vector2[],
-        from: Vector2,
-        cp: Vector2,
-        to: Vector2
-    ) {
+    function sampleQuadratic(points: Vector2[], from: Vector2, cp: Vector2, to: Vector2) {
         const estimate = from.distanceTo(cp) + cp.distanceTo(to);
         const maxGap = 0.015;
         const steps = Math.max(10, Math.ceil(estimate / maxGap));
@@ -403,19 +390,13 @@
             points.push(
                 new Vector2(
                     mt * mt * from.x + 2 * mt * t * cp.x + t * t * to.x,
-                    mt * mt * from.y + 2 * mt * t * cp.y + t * t * to.y
-                )
+                    mt * mt * from.y + 2 * mt * t * cp.y + t * t * to.y,
+                ),
             );
         }
     }
 
-    function sampleCubic(
-        points: Vector2[],
-        from: Vector2,
-        cp1: Vector2,
-        cp2: Vector2,
-        to: Vector2
-    ) {
+    function sampleCubic(points: Vector2[], from: Vector2, cp1: Vector2, cp2: Vector2, to: Vector2) {
         const estimate = from.distanceTo(cp1) + cp1.distanceTo(cp2) + cp2.distanceTo(to);
         const maxGap = 0.015;
         const steps = Math.max(14, Math.ceil(estimate / maxGap));
@@ -431,8 +412,8 @@
                     mt * mt * mt * from.y +
                         3 * mt * mt * t * cp1.y +
                         3 * mt * t * t * cp2.y +
-                        t * t * t * to.y
-                )
+                        t * t * t * to.y,
+                ),
             );
         }
     }
@@ -449,28 +430,28 @@
 
         for (const command of path.commands) {
             const type = command.type;
-            if (type === 'M') {
+            if (type === "M") {
                 if (current.length > 2) contours.push(current);
                 current = [];
                 pen = new Vector2(command.x ?? 0, command.y ?? 0);
                 start = pen.clone();
                 current.push(pen.clone());
-            } else if (type === 'L') {
+            } else if (type === "L") {
                 const to = new Vector2(command.x ?? pen.x, command.y ?? pen.y);
                 sampleLine(current, pen, to);
                 pen = to;
-            } else if (type === 'Q') {
+            } else if (type === "Q") {
                 const cp = new Vector2(command.x1 ?? pen.x, command.y1 ?? pen.y);
                 const to = new Vector2(command.x ?? pen.x, command.y ?? pen.y);
                 sampleQuadratic(current, pen, cp, to);
                 pen = to;
-            } else if (type === 'C') {
+            } else if (type === "C") {
                 const cp1 = new Vector2(command.x1 ?? pen.x, command.y1 ?? pen.y);
                 const cp2 = new Vector2(command.x2 ?? pen.x, command.y2 ?? pen.y);
                 const to = new Vector2(command.x ?? pen.x, command.y ?? pen.y);
                 sampleCubic(current, pen, cp1, cp2, to);
                 pen = to;
-            } else if (type === 'Z') {
+            } else if (type === "Z") {
                 if (current.length > 0) {
                     sampleLine(current, pen, start, 3);
                 }
@@ -495,7 +476,7 @@
                 new Vector2(1, 0),
                 new Vector2(1, 1),
                 new Vector2(0, 1),
-                new Vector2(0, 0)
+                new Vector2(0, 0),
             ]);
         }
 
@@ -537,14 +518,19 @@
             const points3D = contour.map((p) => new Vector3(p.x, centerY - p.y, 0));
             return {
                 points: points3D,
-                bounds: { minX: cMinX, minY: centerY - cMaxY, maxX: cMaxX, maxY: centerY - cMinY }
+                bounds: { minX: cMinX, minY: centerY - cMaxY, maxX: cMaxX, maxY: centerY - cMinY },
             };
         });
 
         const result: GlyphOutline = {
             contours: perContour,
             width,
-            bounds: { minX: globalMinX, minY: centerY - globalMaxY, maxX: globalMaxX, maxY: centerY - globalMinY }
+            bounds: {
+                minX: globalMinX,
+                minY: centerY - globalMaxY,
+                maxX: globalMaxX,
+                maxY: centerY - globalMinY,
+            },
         };
         glyphCache.set(char, result);
         return result;
@@ -572,8 +558,8 @@
                 new Vector3(
                     target.minX + (p.x - source.minX) * sx,
                     target.minY + (p.y - source.minY) * sy,
-                    p.z
-                )
+                    p.z,
+                ),
         );
     }
 
@@ -585,8 +571,12 @@
     function getMappingBounds(fill: Text, glyph: GlyphOutline): Bounds {
         const info = fill.textRenderInfo;
         const block = boundsFromArray(info?.blockBounds ?? []);
-        const glyphBounds = boundsFromArray((info as { glyphBounds?: ArrayLike<number> } | undefined)?.glyphBounds ?? []);
-        const visibleBounds = boundsFromArray((info as { visibleBounds?: ArrayLike<number> } | undefined)?.visibleBounds ?? []);
+        const glyphBounds = boundsFromArray(
+            (info as { glyphBounds?: ArrayLike<number> } | undefined)?.glyphBounds ?? [],
+        );
+        const visibleBounds = boundsFromArray(
+            (info as { visibleBounds?: ArrayLike<number> } | undefined)?.visibleBounds ?? [],
+        );
         return visibleBounds ?? glyphBounds ?? block ?? glyph.bounds;
     }
 
@@ -595,8 +585,8 @@
         fill.text = char;
         fill.font = spaceGroteskFontUrl;
         fill.fontSize = letterFontSize;
-        fill.anchorX = 'left';
-        fill.anchorY = 'middle';
+        fill.anchorX = "left";
+        fill.anchorY = "middle";
         fill.color = textColor;
         fill.fillOpacity = 1;
         return fill;
@@ -627,7 +617,7 @@
 
         const { width: visibleWidth, height: visibleHeight } = getVisibleFrustumSize(
             viewportWidth,
-            viewportHeight
+            viewportHeight,
         );
         const maxWidth = visibleWidth * (1 - viewportPaddingX * 2);
         const maxHeight = visibleHeight * (1 - viewportPaddingY * 2);
@@ -677,12 +667,12 @@
             return;
         }
 
-        const inExit = exitPhase !== 'idle' && exitPhase !== 'done';
+        const inExit = exitPhase !== "idle" && exitPhase !== "done";
         let keepAnimating = false;
 
         if (inExit) {
             updateExitAnimation(now, deltaMs);
-            keepAnimating = exitPhase !== 'idle' && exitPhase !== 'done' && !completionFired;
+            keepAnimating = exitPhase !== "idle" && exitPhase !== "done" && !completionFired;
         } else {
             const elapsedMs = now - startedAt;
             const elapsedTrace = Math.max(0, elapsedMs - introDelayMs);
@@ -719,7 +709,12 @@
                 tryExit();
             }
 
-            keepAnimating = !allComplete || revealRaw < 1 || exitPhase === 'push' || exitPhase === 'scatter' || exitPhase === 'fade';
+            keepAnimating =
+                !allComplete ||
+                revealRaw < 1 ||
+                exitPhase === "push" ||
+                exitPhase === "scatter" ||
+                exitPhase === "fade";
         }
 
         if (keepAnimating && !completionFired) {
@@ -745,17 +740,17 @@
             if (renderer && scene && camera) renderer.render(scene, camera);
         });
 
-        reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
         const onLoad = () => {
             loaded = true;
             tryExit();
         };
 
-        if (document.readyState === 'complete') {
+        if (document.readyState === "complete") {
             loaded = true;
         } else {
-            window.addEventListener('load', onLoad, { once: true });
+            window.addEventListener("load", onLoad, { once: true });
         }
 
         minTimer = setTimeout(() => {
@@ -769,7 +764,7 @@
             canvas: canvasEl,
             antialias: true,
             alpha: true,
-            powerPreference: 'high-performance'
+            powerPreference: "high-performance",
         });
         renderer.outputColorSpace = SRGBColorSpace;
         renderer.setClearColor(colors.bg, 1);
@@ -786,7 +781,7 @@
             transparent: true,
             opacity: 0.6,
             depthTest: false,
-            depthWrite: false
+            depthWrite: false,
         });
 
         void (async () => {
@@ -794,7 +789,7 @@
             try {
                 font = await loadOpenTypeFont(spaceGroteskFontUrl);
             } catch (error) {
-                console.error('Failed to load font outline data for loader:', error);
+                console.error("Failed to load font outline data for loader:", error);
                 tracingDone = true;
                 tryExit();
                 if (renderer && scene && camera) renderer.render(scene, camera);
@@ -804,17 +799,17 @@
 
             const jobs: LetterJob[] = [];
             for (const char of label) {
-                if (char === ' ') {
-                    jobs.push({ kind: 'space' });
+                if (char === " ") {
+                    jobs.push({ kind: "space" });
                     continue;
                 }
-                jobs.push({ kind: 'letter', char, fill: createFillText(char, colors.text) });
+                jobs.push({ kind: "letter", char, fill: createFillText(char, colors.text) });
             }
 
             await Promise.all(
                 jobs
-                    .filter((job): job is Extract<LetterJob, { kind: 'letter' }> => job.kind === 'letter')
-                    .map((job) => syncText(job.fill))
+                    .filter((job): job is Extract<LetterJob, { kind: "letter" }> => job.kind === "letter")
+                    .map((job) => syncText(job.fill)),
             );
             if (disposed) return;
 
@@ -823,7 +818,7 @@
             let labelMaxY = Number.NEGATIVE_INFINITY;
             for (const job of jobs) {
                 if (disposed || !textGroup) return;
-                if (job.kind === 'space') {
+                if (job.kind === "space") {
                     cursor += spaceWidth;
                     continue;
                 }
@@ -846,7 +841,7 @@
                 group.add(fill);
                 textGroup.add(group);
 
-                const trails: LetterUnit['trails'] = [];
+                const trails: LetterUnit["trails"] = [];
                 for (const contour of glyph.contours) {
                     const aligned = mapPointsToBounds(contour.points, glyph.bounds, mappingTargetBounds);
                     const { lengths, total } = buildLengthTable(aligned);
@@ -865,7 +860,7 @@
                     width,
                     durationMs: traceDurationMs,
                     progress: 0,
-                    completed: false
+                    completed: false,
                 });
 
                 cursor += width + letterSpacing;
@@ -885,13 +880,13 @@
             updateProjection();
             renderFrame();
         };
-        window.addEventListener('resize', onResize);
+        window.addEventListener("resize", onResize);
         updateProjection();
 
         return () => {
             unsubscribeTheme();
-            window.removeEventListener('load', onLoad);
-            window.removeEventListener('resize', onResize);
+            window.removeEventListener("load", onLoad);
+            window.removeEventListener("resize", onResize);
             if (minTimer) clearTimeout(minTimer);
             if (exitFallbackTimer) clearTimeout(exitFallbackTimer);
             disposeSceneResources();
@@ -900,15 +895,12 @@
 </script>
 
 {#if isVisible || isAnimatingExit}
-<div
-    bind:this={hostEl}
-    class="fixed inset-0 z-9999 {isAnimatingExit ? 'pointer-events-none' : ''}"
->
-    <div
-        class="absolute inset-0 bg-(--background)"
-        style:opacity={hostOpacity}
-        aria-hidden={isAnimatingExit && hostOpacity < 0.5}
-    ></div>
-    <canvas bind:this={canvasEl} class="relative h-full w-full"></canvas>
-</div>
+    <div bind:this={hostEl} class="fixed inset-0 z-9999 {isAnimatingExit ? 'pointer-events-none' : ''}">
+        <div
+            class="absolute inset-0 bg-(--background)"
+            style:opacity={hostOpacity}
+            aria-hidden={isAnimatingExit && hostOpacity < 0.5}
+        ></div>
+        <canvas bind:this={canvasEl} class="relative h-full w-full"></canvas>
+    </div>
 {/if}

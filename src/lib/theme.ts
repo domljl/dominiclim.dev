@@ -69,7 +69,7 @@ export function subscribeToColorScheme(onChange: (dark: boolean) => void): () =>
         themeListeners.delete(onChange);
     };
 }
-
 export function initThemeFromDocument() {
     applyTheme(getTheme());
 }
+

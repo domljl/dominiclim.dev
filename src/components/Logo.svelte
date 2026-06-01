@@ -1,20 +1,14 @@
 <script lang="ts">
-    import type { SVGAttributes } from 'svelte/elements';
+    import type { SVGAttributes } from "svelte/elements";
 
     type Props = SVGAttributes<SVGSVGElement> & {
         class?: string;
     };
 
-    let { class: className = '', ...restProps }: Props = $props();
+    let { class: className = "", ...restProps }: Props = $props();
 </script>
 
-<svg
-    id="mainLogo"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 200 200"
-    class={className}
-    {...restProps}
->
+<svg id="mainLogo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" class={className} {...restProps}>
     <g id="Logo">
         <path
             class="fill-current"

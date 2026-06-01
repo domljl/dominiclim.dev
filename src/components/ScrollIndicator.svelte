@@ -15,9 +15,7 @@
     aria-hidden={!isVisible}
 >
     <div class="flex flex-col items-center motion-reduce:animate-none animate-bounce">
-        <p
-            class="mb-2 text-sm text-[color-mix(in_srgb,var(--foreground)_85%,transparent)] md:text-base"
-        >
+        <p class="mb-2 text-sm text-[color-mix(in_srgb,var(--foreground)_85%,transparent)] md:text-base">
             Scroll to learn more
         </p>
         <svg

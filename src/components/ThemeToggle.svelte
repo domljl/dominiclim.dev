@@ -1,13 +1,13 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { getTheme, subscribeToColorScheme, toggleTheme } from '@/lib/theme';
+    import { onMount } from "svelte";
+    import { getTheme, subscribeToColorScheme, toggleTheme } from "@/lib/theme";
 
     let isDarkMode = $state(false);
     let reducedMotion = $state(false);
 
     onMount(() => {
-        reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        isDarkMode = getTheme() === 'dark';
+        reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        isDarkMode = getTheme() === "dark";
 
         return subscribeToColorScheme((dark) => {
             isDarkMode = dark;
@@ -27,7 +27,7 @@
         : 'border-gray-300 bg-gray-100 hover:bg-gray-200'} {reducedMotion
         ? ''
         : 'hover:scale-110 active:scale-95'}"
-    aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+    aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
 >
     {#key isDarkMode}
         <div
