@@ -9,7 +9,7 @@
         phrase.length > longest.length ? phrase : longest,
     );
 
-    const typewriterCursor = "ml-0.5 inline-block h-[1em] w-[0.45em] shrink-0 align-baseline bg-current";
+    const typewriterCursor = "ml-0.5 inline-block h-[1em] w-[0.65em] shrink-0 translate-y-[0.08em] align-baseline bg-current";
     const typewriterCursorActive = `${typewriterCursor} animate-pulse motion-reduce:animate-none`;
     const typeMs = 70;
     const pauseMs = 2000;
@@ -101,13 +101,15 @@
 
 <section class="relative h-dvh min-h-screen" aria-label="Introduction">
     <div class="flex h-full items-center justify-center px-6 py-8">
-        <div class="flex flex-row items-center gap-8 md:gap-12">
+        <div
+            class="flex flex-col items-center gap-6 text-center md:flex-row md:items-center md:gap-12 md:text-left"
+        >
             <Logo
                 aria-hidden="true"
                 class="h-48 w-48 shrink-0 text-black sm:h-64 sm:w-64 md:h-80 md:w-80 lg:h-96 lg:w-96 dark:text-white"
             />
 
-            <div class="flex flex-col gap-2 md:gap-4">
+            <div class="flex flex-col items-center gap-2 md:items-start md:gap-4">
                 <h1
                     class="m-0 text-5xl leading-tight font-medium tracking-tight text-(--foreground) md:text-6xl lg:text-7xl"
                 >

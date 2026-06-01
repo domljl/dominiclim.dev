@@ -2,6 +2,12 @@
     import { onMount } from "svelte";
     import { getTheme, subscribeToColorScheme, toggleTheme } from "@/lib/theme";
 
+    interface Props {
+        embedded?: boolean;
+    }
+
+    let { embedded = false }: Props = $props();
+
     let isDarkMode = $state(false);
     let reducedMotion = $state(false);
 
@@ -22,9 +28,13 @@
 <button
     type="button"
     onclick={handleToggle}
-    class="pointer-events-auto mr-8 rounded-lg border p-3.5 transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:mr-12 sm:p-4 {isDarkMode
+    class="pointer-events-auto rounded-xl border p-3.5 transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) {embedded
+        ? 'flex w-full justify-center border-[color-mix(in_srgb,var(--foreground)_12%,transparent)] bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)]'
+        : 'mr-8 sm:mr-12 sm:p-4'} {embedded
+        ? ''
+        : isDarkMode
         ? 'border-gray-600 bg-gray-800 hover:bg-gray-700'
-        : 'border-gray-300 bg-gray-100 hover:bg-gray-200'} {reducedMotion
+        : 'border-gray-300 bg-gray-100 hover:bg-gray-200'} {embedded || reducedMotion
         ? ''
         : 'hover:scale-110 active:scale-95'}"
     aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
