@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { cubicOut, cubicIn } from "svelte/easing";
-    import { fade, fly } from "svelte/transition";
+    import { fly } from "svelte/transition";
     import ThemeToggle from "@/components/ThemeToggle.svelte";
 
     const links = [
@@ -251,8 +251,8 @@
                 class="fixed inset-0 z-40 cursor-default bg-[color-mix(in_srgb,var(--foreground)_20%,transparent)] backdrop-blur-[2px]"
                 aria-label="Close menu"
                 onclick={closeMenu}
-                in:fade={reducedMotion ? { duration: 0 } : { duration: 220 }}
-                out:fade={reducedMotion ? { duration: 0 } : { duration: 180 }}
+                in:fly={reducedMotion ? { duration: 0 } : { y: 0, duration: 220 }}
+                out:fly={reducedMotion ? { duration: 0 } : { y: 0, duration: 180 }}
             ></button>
 
             <div

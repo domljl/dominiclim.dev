@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { cubicOut } from "svelte/easing";
-    import { fade, fly } from "svelte/transition";
+    import { fly } from "svelte/transition";
 
     const showAfterPx = 320;
 
@@ -38,7 +38,7 @@
         onclick={scrollToTop}
         class="fixed right-4 bottom-6 z-40 sm:right-6 sm:bottom-8"
         in:fly={reducedMotion ? { duration: 0 } : { y: 16, duration: 260, easing: cubicOut }}
-        out:fade={reducedMotion ? { duration: 0 } : { duration: 180 }}
+        out:fly={reducedMotion ? { duration: 0 } : { y: 0, duration: 180 }}
     >
         <span
             class="{glassCardClass} flex h-12 w-12 items-center justify-center text-(--foreground) ring-1 ring-[color-mix(in_srgb,var(--foreground)_10%,transparent)] transition-transform duration-200 hover:scale-105 active:scale-95 motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
