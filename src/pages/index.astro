@@ -2,9 +2,11 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import About from "@/components/About.svelte";
 import Hero from "@/components/Hero.svelte";
+import Timeline from "@/components/Timeline.svelte";
 ---
 
 <BaseLayout>
     <Hero client:load />
     <About client:load />
+    <Timeline client:load />
 </BaseLayout>

@@ -1,0 +1,730 @@
+<script lang="ts">
+    import { cubicIn, cubicOut } from "svelte/easing";
+    import { fly } from "svelte/transition";
+    import { onMount, tick } from "svelte";
+    import {
+        getOrganization,
+        getResumeSections,
+        getScrollSections,
+        isWorkEntry,
+        resolveLogo,
+        timelineEntries,
+        type ResumeSection,
+        type TimelineEntry,
+    } from "@/lib/timeline";
+
+    const entries = timelineEntries;
+    const holdRatio = 0.42;
+    const scrollLengthPerEntry = 1.6;
+    const slideTravelRatio = 0.44;
+    const incomingOpacityStart = 0.1;
+    const outgoingOpacityFadeStart = 0.45;
+    const incomingTiltDeg = 45;
+    const incomingDepthPx = 180;
+    const incomingScaleStart = 0.94;
+
+    const viewInMs = 460;
+    const viewOutMs = 320;
+    const noMotionTransition = { duration: 0 };
+
+    type ViewMode = "scroll" | "resume";
+    type ViewToggleDirection = "forward" | "back";
+
+    let sectionRef = $state<HTMLElement | undefined>();
+    let panelRef = $state<HTMLElement | undefined>();
+    let showAllButtonRef = $state<HTMLButtonElement | undefined>();
+    let backButtonRef = $state<HTMLButtonElement | undefined>();
+    let scrollProgress = $state(0);
+    let approachFill = $state(0);
+    let panelHeight = $state(800);
+    let viewMode = $state<ViewMode>("scroll");
+    let reducedMotion = $state(false);
+    let resumeTabByEntry = $state<Record<string, string>>({});
+
+    const resumeTabKey = (label: string) => {
+        if (label === "Leadership & Roles") return "positions";
+        if (label === "Activities & Events") return "events";
+        if (label === "Awards") return "awards";
+        return label.toLowerCase();
+    };
+
+    const resumeTabLabel = (label: string) => {
+        if (label === "Leadership & Roles") return "Positions";
+        if (label === "Activities & Events") return "Events";
+        if (label === "Key Contributions") return "Contributions";
+        return label;
+    };
+
+    const activeResumeTab = (entry: TimelineEntry, sections: ResumeSection[]) => {
+        const stored = resumeTabByEntry[entry.title];
+        if (stored && sections.some((section) => resumeTabKey(section.label) === stored)) {
+            return stored;
+        }
+
+        return resumeTabKey(sections[0]?.label ?? "");
+    };
+
+    const setResumeTab = (entryTitle: string, tab: string) => {
+        resumeTabByEntry = { ...resumeTabByEntry, [entryTitle]: tab };
+    };
+
+    const currentIndex = $derived(Math.min(entries.length - 1, Math.max(0, Math.floor(scrollProgress))));
+    const nextIndex = $derived(Math.min(entries.length - 1, currentIndex + 1));
+    const segmentProgress = $derived(scrollProgress - currentIndex);
+    const slideBlend = $derived.by(() => {
+        if (currentIndex === nextIndex) return 0;
+
+        if (reducedMotion) {
+            return segmentProgress >= 0.5 ? 1 : 0;
+        }
+
+        if (segmentProgress < holdRatio) return 0;
+
+        return clamp((segmentProgress - holdRatio) / (1 - holdRatio), 0, 1);
+    });
+    const incomingOpacity = $derived.by(() => {
+        if (slideBlend <= incomingOpacityStart) return 0;
+        return clamp((slideBlend - incomingOpacityStart) / (1 - incomingOpacityStart), 0, 1);
+    });
+    const outgoingOpacity = $derived.by(() => {
+        if (slideBlend <= outgoingOpacityFadeStart) return 1;
+        return clamp(
+            1 - (slideBlend - outgoingOpacityFadeStart) / (1 - outgoingOpacityFadeStart),
+            0,
+            1,
+        );
+    });
+    const displayIndex = $derived(slideBlend > 0.5 ? nextIndex : currentIndex);
+    const indicatorProgress = $derived(currentIndex + slideBlend);
+    const entryNumber = $derived(String(displayIndex + 1).padStart(2, "0"));
+    const entryTotal = $derived(String(entries.length).padStart(2, "0"));
+    const segmentFill = (index: number) => {
+        if (index === 0) {
+            return approachFill;
+        }
+
+        if (currentIndex > index) {
+            return 1;
+        }
+
+        if (currentIndex === index) {
+            if (slideBlend > 0) {
+                return 1;
+            }
+
+            return clamp(segmentProgress / holdRatio, 0, 1);
+        }
+
+        if (currentIndex === index - 1 && slideBlend > 0) {
+            return slideBlend;
+        }
+
+        return 0;
+    };
+
+    const travelOffset = $derived(panelHeight * slideTravelRatio);
+
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+    const updateScrollProgress = () => {
+        if (!sectionRef || viewMode !== "scroll") return;
+
+        const sectionTop = sectionRef.offsetTop;
+        const viewportHeight = window.innerHeight;
+        const sectionEnd = sectionTop + entries.length * scrollLengthPerEntry * viewportHeight;
+        const scrollY = window.scrollY;
+        const approachStart = sectionTop - viewportHeight;
+
+        if (scrollY < approachStart) {
+            approachFill = 0;
+        } else if (scrollY < sectionTop) {
+            approachFill = clamp((scrollY - approachStart) / (sectionTop - approachStart), 0, 1);
+        } else {
+            approachFill = 1;
+        }
+
+        if (scrollY < sectionTop) {
+            scrollProgress = 0;
+            return;
+        }
+
+        if (scrollY >= sectionEnd) {
+            scrollProgress = entries.length - 1;
+            return;
+        }
+
+        scrollProgress = clamp(
+            (scrollY - sectionTop) / (viewportHeight * scrollLengthPerEntry),
+            0,
+            entries.length - 1,
+        );
+    };
+
+    const slideStyle = (index: number) => {
+        if (currentIndex === nextIndex && index === currentIndex) {
+            return {
+                visible: true,
+                translateY: 0,
+                translateZ: 0,
+                rotateX: 0,
+                scale: 1,
+                opacity: 1,
+                zIndex: 20,
+                pointerEvents: "auto" as const,
+                transformOrigin: "center center",
+            };
+        }
+
+        if (index === currentIndex && slideBlend < 1) {
+            return {
+                visible: true,
+                translateY: -slideBlend * travelOffset,
+                translateZ: reducedMotion ? 0 : -slideBlend * incomingDepthPx,
+                rotateX: reducedMotion ? 0 : slideBlend * incomingTiltDeg,
+                scale: reducedMotion ? 1 : 1 - slideBlend * (1 - incomingScaleStart),
+                opacity: outgoingOpacity,
+                zIndex: 20,
+                pointerEvents: slideBlend < outgoingOpacityFadeStart ? ("auto" as const) : ("none" as const),
+                transformOrigin: "center top",
+            };
+        }
+
+        if (index === nextIndex && slideBlend > 0) {
+            const lift = 1 - slideBlend;
+
+            return {
+                visible: true,
+                translateY: lift * travelOffset,
+                translateZ: reducedMotion ? 0 : -lift * incomingDepthPx,
+                rotateX: reducedMotion ? 0 : lift * incomingTiltDeg,
+                scale: reducedMotion ? 1 : incomingScaleStart + slideBlend * (1 - incomingScaleStart),
+                opacity: incomingOpacity,
+                zIndex: 21,
+                pointerEvents: slideBlend > 0.65 ? ("auto" as const) : ("none" as const),
+                transformOrigin: "center bottom",
+            };
+        }
+
+        return { visible: false } as const;
+    };
+
+    const dotWeight = (index: number) => clamp(1 - Math.abs(indicatorProgress - index), 0, 1);
+
+    const updatePanelHeight = () => {
+        panelHeight = panelRef?.clientHeight ?? window.innerHeight;
+    };
+
+    const scrollViewIn = (node: Element) =>
+        reducedMotion
+            ? noMotionTransition
+            : fly(node, { y: -20, duration: viewInMs, easing: cubicOut, opacity: 0 });
+
+    const scrollViewOut = (node: Element) =>
+        reducedMotion
+            ? noMotionTransition
+            : fly(node, { y: -28, duration: viewOutMs, easing: cubicIn, opacity: 0 });
+
+    const resumeViewIn = (node: Element) =>
+        reducedMotion
+            ? noMotionTransition
+            : fly(node, { y: 28, duration: viewInMs, easing: cubicOut, opacity: 0 });
+
+    const resumeViewOut = (node: Element) =>
+        reducedMotion
+            ? noMotionTransition
+            : fly(node, { y: 20, duration: viewOutMs, easing: cubicIn, opacity: 0 });
+
+    const focusAfterViewTransition = (focusTarget: () => HTMLButtonElement | undefined) => {
+        if (reducedMotion) {
+            focusTarget()?.focus();
+            return;
+        }
+
+        window.setTimeout(() => focusTarget()?.focus(), viewInMs);
+    };
+
+    const showResume = async () => {
+        if (viewMode === "resume") return;
+
+        viewMode = "resume";
+        await tick();
+        sectionRef?.scrollIntoView({ behavior: "auto", block: "start" });
+        focusAfterViewTransition(() => backButtonRef);
+    };
+
+    const showScroll = async () => {
+        if (viewMode === "scroll") return;
+
+        viewMode = "scroll";
+        await tick();
+        updateScrollProgress();
+        focusAfterViewTransition(() => showAllButtonRef);
+    };
+
+    onMount(async () => {
+        reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        updateScrollProgress();
+        await tick();
+        updatePanelHeight();
+    });
+</script>
+
+<svelte:window
+    onscroll={updateScrollProgress}
+    onresize={() => {
+        updateScrollProgress();
+        updatePanelHeight();
+    }}
+/>
+
+<section
+    bind:this={sectionRef}
+    id="timeline"
+    aria-label="Timeline"
+    class="relative overflow-x-clip scroll-mt-28 sm:scroll-mt-32 {viewMode === 'resume' ? 'min-h-screen px-4 pb-16 sm:px-6' : ''}"
+>
+    {#if viewMode === "scroll"}
+        <div in:scrollViewIn out:scrollViewOut>
+            <div bind:this={panelRef} class="sticky top-0 h-screen overflow-hidden">
+            <div
+                class="absolute top-1/2 right-4 flex -translate-y-1/2 flex-col items-center sm:right-6 lg:right-8"
+                aria-hidden="true"
+            >
+                <div class="flex flex-col items-center gap-2 sm:gap-2.5">
+                    {#each entries as _, index (index)}
+                        {@const fill = segmentFill(index)}
+                        {@const weight = dotWeight(index)}
+                        {@const isActive = weight > 0.72}
+                        <div
+                            class="relative overflow-hidden rounded-md bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_14%,transparent)] transition-all duration-300 ease-out {isActive
+                                ? 'h-24 w-2.5 shadow-[0_0_14px_color-mix(in_srgb,var(--accent)_28%,transparent)] sm:h-28 sm:w-3'
+                                : 'h-20 w-2 opacity-70 sm:h-24 sm:w-2'}"
+                        >
+                            <div
+                                class="absolute top-0 left-0 w-full rounded-md bg-linear-to-b from-(--accent) to-[color-mix(in_srgb,var(--accent)_70%,transparent)] transition-[height] duration-150 ease-out {isActive
+                                    ? 'shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_38%,transparent)]'
+                                    : ''}"
+                                style:height="{fill * 100}%"
+                            ></div>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+
+            <div class="absolute inset-0 flex items-center justify-center px-5 py-20 sm:px-10 sm:py-24 lg:px-16">
+                <div
+                    class="relative h-full w-full max-w-360 overflow-hidden"
+                    style:perspective={reducedMotion ? undefined : "1400px"}
+                >
+                    {#each entries as entry, index (entry.title)}
+                        {@const slide = slideStyle(index)}
+                        {#if slide.visible}
+                            <article
+                                class="absolute inset-x-0 top-1/2 flex justify-center px-2 sm:px-6"
+                                style:transform="translate3d(0, calc(-50% + {slide.translateY}px), {slide.translateZ}px) rotateX({slide.rotateX}deg) scale({slide.scale})"
+                                style:transform-origin={slide.transformOrigin}
+                                style:transform-style="preserve-3d"
+                                style:opacity={slide.opacity}
+                                style:z-index={slide.zIndex}
+                                style:pointer-events={slide.pointerEvents}
+                                style:will-change="transform, opacity"
+                                aria-hidden={index !== displayIndex}
+                            >
+                                <div class="w-full max-w-7xl">
+                                    {@render entryCard(entry, true, index)}
+                                </div>
+                            </article>
+                        {/if}
+                    {/each}
+                </div>
+            </div>
+
+            <button
+                bind:this={showAllButtonRef}
+                type="button"
+                class="absolute bottom-10 left-5 z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:left-8"
+                aria-label="Show full timeline"
+                onclick={showResume}
+            >
+                {@render viewToggleButton("Show all", "forward")}
+            </button>
+            </div>
+
+            <div aria-hidden="true" style:height="{entries.length * scrollLengthPerEntry * 100}vh"></div>
+        </div>
+    {:else}
+        <div class="mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 sm:pt-6" in:resumeViewIn out:resumeViewOut>
+            <button
+                bind:this={backButtonRef}
+                type="button"
+                class="mb-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:mb-12"
+                aria-label="Return to scroll timeline"
+                onclick={showScroll}
+            >
+                {@render viewToggleButton("Back to scroll view", "back")}
+            </button>
+
+            <div>
+                {#each [...entries].reverse() as entry (entry.title)}
+                    {@render resumeEntry(entry)}
+                {/each}
+            </div>
+        </div>
+    {/if}
+</section>
+
+{#snippet viewToggleButton(label: string, direction: ViewToggleDirection)}
+    <span
+        class="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full bg-transparent px-5 py-2.5 text-(--foreground) shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:gap-3 sm:px-6 sm:py-3"
+    >
+        <span
+            class="pointer-events-none absolute inset-0 z-1 rounded-[inherit] backdrop-blur-md"
+            aria-hidden="true"
+        ></span>
+        <span
+            class="pointer-events-none absolute inset-0 z-2 rounded-[inherit] bg-white/20 dark:bg-black/20"
+            aria-hidden="true"
+        ></span>
+        <span
+            class="pointer-events-none absolute inset-0 z-3 rounded-[inherit] shadow-[inset_1px_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_1px_1px_1px_rgba(255,255,255,0.12)]"
+            aria-hidden="true"
+        ></span>
+        <span
+            class="pointer-events-none absolute inset-0 z-4 rounded-[inherit] bg-[color-mix(in_srgb,var(--accent)_0%,transparent)] transition-colors duration-200 group-hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+            aria-hidden="true"
+        ></span>
+
+        {#if direction === "back"}
+            <svg
+                class="relative z-5 h-4 w-4 shrink-0 text-(--accent) transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:group-hover:translate-x-0 sm:h-4.5 sm:w-4.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+            </svg>
+        {:else}
+            <svg
+                class="relative z-5 h-4 w-4 shrink-0 text-(--accent) sm:h-4.5 sm:w-4.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <path d="M8 6h13" />
+                <path d="M8 12h13" />
+                <path d="M8 18h13" />
+                <path d="M3 6h.01" />
+                <path d="M3 12h.01" />
+                <path d="M3 18h.01" />
+            </svg>
+        {/if}
+
+        <span class="relative z-5 text-sm font-medium tracking-tight sm:text-base">{label}</span>
+    </span>
+{/snippet}
+
+{#snippet entryCard(entry: TimelineEntry, expanded = false, cardIndex?: number)}
+    {#if expanded && cardIndex === displayIndex}
+        <div class="mb-8 flex items-start justify-between gap-6 sm:mb-10">
+            <p class="m-0 text-sm font-medium tracking-[0.22em] text-(--foreground) uppercase sm:text-base">
+                {entry.type}
+            </p>
+            <p class="m-0 shrink-0 font-mono text-base text-(--foreground) sm:text-lg" aria-live="polite">
+                {entryNumber}<span class="mx-1 text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">/</span>{entryTotal}
+            </p>
+        </div>
+    {/if}
+
+    <div class="flex w-full flex-col gap-10 sm:flex-row sm:items-start sm:gap-12 lg:gap-20">
+        {@render entryMeta(entry, undefined, expanded)}
+
+        {#if getScrollSections(entry).length > 0}
+            <div
+                class="hidden h-128 w-px shrink-0 self-start bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] sm:block lg:h-145"
+                aria-hidden="true"
+            ></div>
+            <div
+                class="min-w-0 flex-1 text-left {expanded
+                    ? 'space-y-6 sm:space-y-8'
+                    : 'space-y-5'}"
+            >
+                {#each getScrollSections(entry) as section (section.label)}
+                    {@render detailSection(section.label, section.items, expanded)}
+                {/each}
+            </div>
+        {/if}
+    </div>
+{/snippet}
+
+{#snippet entryMeta(entry: TimelineEntry, index?: number, expanded = false)}
+    <div
+        class="flex min-w-0 shrink-0 flex-col items-center gap-5 text-center {expanded
+            ? 'w-full sm:max-w-120 md:max-w-136 lg:max-w-xl'
+            : 'w-full sm:max-w-sm'}"
+    >
+        {@render entryLogo(entry, expanded)}
+
+        <div class="min-w-0 w-full space-y-3">
+            {#if index !== undefined}
+                <p class="m-0 font-mono text-sm text-[color-mix(in_srgb,var(--foreground)_50%,transparent)]">
+                    {String(index + 1).padStart(2, "0")}
+                </p>
+            {/if}
+
+            <h2
+                class="m-0 mx-auto max-w-full leading-tight font-medium tracking-tight text-(--foreground) {expanded
+                    ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
+                    : 'text-xl sm:text-2xl md:text-3xl'} {entry.titleLines?.length ? '' : 'truncate'}"
+                title={entry.title}
+            >
+                {#if entry.titleLines?.length}
+                    {#each entry.titleLines as line (line)}
+                        <span class="block">{line}</span>
+                    {/each}
+                {:else}
+                    {entry.title}
+                {/if}
+            </h2>
+
+            <p class="m-0 text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] {expanded ? 'text-lg sm:text-xl md:text-2xl' : 'text-base sm:text-lg'}">{entry.date}</p>
+
+            <a
+                href={entry.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="group relative inline-block max-w-full truncate pr-4 font-medium text-(--accent) no-underline after:pointer-events-none after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-full after:-translate-x-1/2 after:scale-x-0 after:rounded-full after:bg-(--accent) after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) focus-visible:after:scale-x-100 motion-reduce:after:duration-0 {expanded
+                    ? 'text-lg sm:text-xl md:text-2xl'
+                    : 'text-base sm:text-lg'}"
+            >
+                {getOrganization(entry)}
+                <svg
+                    class="pointer-events-none absolute top-0 right-0 text-(--accent) opacity-60 transition-opacity duration-200 group-hover:opacity-100 {expanded
+                        ? 'h-4 w-4 sm:h-5 sm:w-5'
+                        : 'h-3.5 w-3.5 sm:h-4 sm:w-4'}"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M7 17 17 7" />
+                    <path d="M9 7h8v8" />
+                </svg>
+            </a>
+        </div>
+    </div>
+{/snippet}
+
+{#snippet detailSection(label: string, items: string[], expanded = false)}
+    <div class="space-y-3 sm:space-y-4">
+        <h3 class="m-0 text-sm font-medium tracking-[0.18em] text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase sm:text-base">
+            {label}
+        </h3>
+
+        <ul
+            class="m-0 space-y-3 leading-relaxed text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] {expanded
+                ? 'text-lg sm:text-xl'
+                : 'text-base sm:text-lg'}"
+        >
+            {#each items as item (item)}
+                <li class="flex gap-4">
+                    <span class="mt-2.5 h-1.5 w-5 shrink-0 rounded-full bg-(--accent) sm:mt-3 sm:h-2 sm:w-6" aria-hidden="true"></span>
+                    <span>{item}</span>
+                </li>
+            {/each}
+        </ul>
+    </div>
+{/snippet}
+
+{#snippet entryLogo(entry: TimelineEntry, expanded = false)}
+    {@const logoUrl = resolveLogo(entry.logo)}
+    <figure class="m-0 mx-auto shrink-0">
+        <div
+            class="flex items-center justify-center overflow-hidden rounded-3xl {expanded
+                ? 'h-52 w-52 sm:h-64 sm:w-64 md:h-72 md:w-72 lg:h-80 lg:w-80 xl:h-96 xl:w-96'
+                : 'h-24 w-24 sm:h-28 sm:w-28'}"
+        >
+            {#if logoUrl}
+                <img
+                    src={logoUrl}
+                    alt="{getOrganization(entry)} logo"
+                    class="h-full w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                />
+            {:else}
+                <span
+                    class="font-medium text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] {expanded ? 'text-6xl lg:text-7xl' : 'text-4xl'}"
+                    aria-hidden="true"
+                >
+                    {getOrganization(entry).charAt(0)}
+                </span>
+            {/if}
+        </div>
+    </figure>
+{/snippet}
+
+{#snippet resumeTabBar(entry: TimelineEntry, sections: ResumeSection[], activeTab: string)}
+    <div
+        class="inline-flex max-w-full flex-wrap gap-1 rounded-full border border-[color-mix(in_srgb,var(--foreground)_12%,transparent)] bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--foreground)_8%,transparent)] backdrop-blur-md"
+        role="tablist"
+        aria-label="{getOrganization(entry)} highlights"
+    >
+        {#each sections as section (section.label)}
+            {@const tab = resumeTabKey(section.label)}
+            {@const isActive = activeTab === tab}
+            <button
+                type="button"
+                role="tab"
+                id="resume-tab-{entry.title}-{tab}"
+                aria-selected={isActive}
+                aria-controls="resume-panel-{entry.title}-{tab}"
+                class="group relative overflow-hidden rounded-full px-3.5 py-2 text-xs font-medium transition-[transform,color,box-shadow] duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:px-4 sm:py-2.5 sm:text-sm {isActive
+                    ? 'text-white shadow-[0_2px_14px_color-mix(in_srgb,var(--accent)_38%,transparent)]'
+                    : 'text-[color-mix(in_srgb,var(--foreground)_52%,transparent)] hover:text-[color-mix(in_srgb,var(--foreground)_82%,transparent)]'}"
+                onclick={() => setResumeTab(entry.title, tab)}
+            >
+                {#if isActive}
+                    <span
+                        class="pointer-events-none absolute inset-0 rounded-[inherit] bg-(--accent)"
+                        aria-hidden="true"
+                    ></span>
+                {:else}
+                    <span
+                        class="pointer-events-none absolute inset-0 rounded-[inherit] bg-transparent transition-colors duration-200 group-hover:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)]"
+                        aria-hidden="true"
+                    ></span>
+                {/if}
+
+                <span class="relative z-1 flex items-center gap-2">
+                    {resumeTabLabel(section.label)}
+                    <span
+                        class="min-w-5 rounded-full px-1.5 py-0.5 text-center font-mono text-[10px] leading-none tracking-tight sm:text-[11px] {isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] text-[color-mix(in_srgb,var(--foreground)_48%,transparent)] group-hover:text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]'}"
+                    >
+                        {section.items.length}
+                    </span>
+                </span>
+            </button>
+        {/each}
+    </div>
+{/snippet}
+
+{#snippet resumeItemList(items: string[])}
+    <ul class="m-0 space-y-2.5 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_68%,transparent)] sm:space-y-3 sm:text-base">
+        {#each items as item (item)}
+            <li class="flex gap-3 sm:gap-3.5">
+                <span
+                    class="mt-2 h-1.5 w-4 shrink-0 rounded-full bg-(--accent) sm:mt-2.5 sm:w-5"
+                    aria-hidden="true"
+                ></span>
+                <span>{item}</span>
+            </li>
+        {/each}
+    </ul>
+{/snippet}
+
+{#snippet resumeEntry(entry: TimelineEntry)}
+    {@const sections = getResumeSections(entry)}
+    {@const logoUrl = resolveLogo(entry.logo)}
+    {@const activeTab = activeResumeTab(entry, sections)}
+    <article class="pb-10 last:pb-0 sm:pb-12">
+        <div class="flex gap-4 sm:gap-5">
+            <figure class="m-0 shrink-0">
+                <div
+                    class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)] sm:h-16 sm:w-16"
+                >
+                    {#if logoUrl}
+                        <img
+                            src={logoUrl}
+                            alt="{getOrganization(entry)} logo"
+                            class="h-full w-full object-contain"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                    {:else}
+                        <span
+                            class="text-lg font-medium text-[color-mix(in_srgb,var(--foreground)_50%,transparent)]"
+                            aria-hidden="true"
+                        >
+                            {getOrganization(entry).charAt(0)}
+                        </span>
+                    {/if}
+                </div>
+            </figure>
+
+            <div class="min-w-0 flex-1 space-y-3 sm:space-y-3.5">
+                <div class="flex items-start justify-between gap-4 sm:gap-8">
+                    <h3 class="m-0 min-w-0 font-medium leading-tight text-(--foreground) text-lg sm:text-xl">
+                        {entry.title}
+                    </h3>
+                    <p class="m-0 shrink-0 text-sm text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] sm:text-base">
+                        {entry.date}
+                    </p>
+                </div>
+
+                <a
+                    href={entry.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="group relative inline-block max-w-full truncate pr-4 text-base text-[color-mix(in_srgb,var(--foreground)_72%,transparent)] no-underline after:pointer-events-none after:absolute after:bottom-0 after:left-1/2 after:h-px after:w-full after:-translate-x-1/2 after:scale-x-0 after:rounded-full after:bg-[color-mix(in_srgb,var(--foreground)_45%,transparent)] after:transition-transform after:duration-300 after:ease-out hover:text-(--foreground) hover:after:scale-x-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) focus-visible:after:scale-x-100 motion-reduce:after:duration-0 sm:text-lg"
+                >
+                    {getOrganization(entry)}
+                    <svg
+                        class="pointer-events-none absolute top-0.5 right-0 h-3.5 w-3.5 text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] opacity-60 transition-opacity duration-200 group-hover:opacity-100"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path d="M7 17 17 7" />
+                        <path d="M9 7h8v8" />
+                    </svg>
+                </a>
+
+                {#if sections.length > 0}
+                    {#if isWorkEntry(entry)}
+                        <div class="space-y-2.5 pt-1">
+                            <p class="m-0 text-xs font-medium tracking-[0.16em] text-[color-mix(in_srgb,var(--foreground)_45%,transparent)] uppercase sm:text-sm">
+                                {resumeTabLabel(sections[0].label)}
+                            </p>
+                            {@render resumeItemList(sections[0].items)}
+                        </div>
+                    {:else}
+                        <div class="space-y-4 pt-1">
+                            {@render resumeTabBar(entry, sections, activeTab)}
+
+                            {#each sections as section (section.label)}
+                                {@const tab = resumeTabKey(section.label)}
+                                {#if activeTab === tab}
+                                    <div
+                                        id="resume-panel-{entry.title}-{tab}"
+                                        role="tabpanel"
+                                        aria-labelledby="resume-tab-{entry.title}-{tab}"
+                                    >
+                                        {@render resumeItemList(section.items)}
+                                    </div>
+                                {/if}
+                            {/each}
+                        </div>
+                    {/if}
+                {/if}
+            </div>
+        </div>
+    </article>
+{/snippet}
