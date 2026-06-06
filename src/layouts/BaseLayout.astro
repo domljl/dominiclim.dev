@@ -4,6 +4,8 @@ import LoadingScreen from '@/components/LoadingScreen.svelte';
 import LogoLink from '@/components/LogoLink.svelte';
 import NavBar from '@/components/NavBar.svelte';
 import ThemeToggle from '@/components/ThemeToggle.svelte';
+import Analytics from '@vercel/analytics/astro';
+import SpeedInsights from '@vercel/speed-insights/astro';
 import '@/styles/global.css';
 ---
 
@@ -30,7 +32,7 @@ import '@/styles/global.css';
         </script>
     </head>
     <body class="antialiased">
-        <!-- <LoadingScreen client:only="svelte" visible={true} /> -->
+        <LoadingScreen client:only="svelte" visible={true} />
         <header
             class="pointer-events-none fixed top-11 right-4 left-4 z-50 flex items-center justify-between"
         >
@@ -46,5 +48,7 @@ import '@/styles/global.css';
         </header>
         <slot />
         <BackToTop client:load />
+        <Analytics />
+        <SpeedInsights />
     </body>
 </html>
