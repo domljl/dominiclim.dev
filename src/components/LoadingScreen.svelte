@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, tick } from "svelte";
     import {
         BufferAttribute,
         BufferGeometry,
@@ -17,7 +17,7 @@
         WebGLRenderer,
     } from "three";
     import { Text } from "troika-three-text";
-    import { parse as openTypeParse } from "opentype.js";
+    import * as opentype from "opentype.js/dist/opentype.mjs";
     import type { Font } from "opentype.js";
     import spaceGroteskFontUrl from "@/assets/fonts/SpaceGrotesk-500.ttf?url";
     import { getThemeColors, subscribeToColorScheme } from "@/lib/theme";
@@ -367,7 +367,7 @@
                 }
                 return response.arrayBuffer();
             })
-            .then((buffer) => openTypeParse(buffer));
+            .then((buffer) => opentype.parse(buffer));
     }
 
     function sampleLine(points: Vector2[], from: Vector2, to: Vector2, minSteps = 4) {
@@ -727,9 +727,23 @@
     }
 
     onMount(() => {
-        if (!canvasEl || !hostEl) return;
+        let unsubscribeTheme: (() => void) | undefined;
 
-        const unsubscribeTheme = subscribeToColorScheme((dark) => {
+        const onLoad = () => {
+            loaded = true;
+            tryExit();
+        };
+
+        const onResize = () => {
+            updateProjection();
+            renderFrame();
+        };
+
+        void (async () => {
+            await tick();
+            if (!canvasEl || !hostEl) return;
+
+            unsubscribeTheme = subscribeToColorScheme((dark) => {
             isDark = dark;
             const colors = getThemeColors(isDark);
             if (renderer) renderer.setClearColor(colors.bg, 1);
@@ -740,51 +754,46 @@
             if (renderer && scene && camera) renderer.render(scene, camera);
         });
 
-        reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-        const onLoad = () => {
-            loaded = true;
-            tryExit();
-        };
+            if (document.readyState === "complete") {
+                loaded = true;
+            } else {
+                window.addEventListener("load", onLoad, { once: true });
+            }
 
-        if (document.readyState === "complete") {
-            loaded = true;
-        } else {
-            window.addEventListener("load", onLoad, { once: true });
-        }
+            minTimer = setTimeout(() => {
+                minElapsed = true;
+                tryExit();
+            }, minDisplayMs);
 
-        minTimer = setTimeout(() => {
-            minElapsed = true;
-            tryExit();
-        }, minDisplayMs);
+            const colors = getThemeColors(isDark);
 
-        const colors = getThemeColors(isDark);
+            renderer = new WebGLRenderer({
+                canvas: canvasEl,
+                antialias: true,
+                alpha: true,
+                powerPreference: "high-performance",
+            });
+            renderer.outputColorSpace = SRGBColorSpace;
+            renderer.setClearColor(colors.bg, 1);
 
-        renderer = new WebGLRenderer({
-            canvas: canvasEl,
-            antialias: true,
-            alpha: true,
-            powerPreference: "high-performance",
-        });
-        renderer.outputColorSpace = SRGBColorSpace;
-        renderer.setClearColor(colors.bg, 1);
+            scene = new Scene();
+            camera = new PerspectiveCamera(40, 1, 0.1, 100);
+            camera.position.set(0, 0, 9);
 
-        scene = new Scene();
-        camera = new PerspectiveCamera(40, 1, 0.1, 100);
-        camera.position.set(0, 0, 9);
+            textGroup = new Group();
+            scene.add(textGroup);
 
-        textGroup = new Group();
-        scene.add(textGroup);
+            trailMaterial = new LineBasicMaterial({
+                color: colors.text,
+                transparent: true,
+                opacity: 0.6,
+                depthTest: false,
+                depthWrite: false,
+            });
 
-        trailMaterial = new LineBasicMaterial({
-            color: colors.text,
-            transparent: true,
-            opacity: 0.6,
-            depthTest: false,
-            depthWrite: false,
-        });
-
-        void (async () => {
+            void (async () => {
             let font: Font;
             try {
                 font = await loadOpenTypeFont(spaceGroteskFontUrl);
@@ -874,17 +883,14 @@
             updateProjection();
             startedAt = performance.now();
             rafId = requestAnimationFrame(animate);
+            })();
+
+            window.addEventListener("resize", onResize);
+            updateProjection();
         })();
 
-        const onResize = () => {
-            updateProjection();
-            renderFrame();
-        };
-        window.addEventListener("resize", onResize);
-        updateProjection();
-
         return () => {
-            unsubscribeTheme();
+            unsubscribeTheme?.();
             window.removeEventListener("load", onLoad);
             window.removeEventListener("resize", onResize);
             if (minTimer) clearTimeout(minTimer);

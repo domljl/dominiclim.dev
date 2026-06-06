@@ -11,7 +11,7 @@
                 src="/photoOfMe.jpg"
                 alt="Dominic Lim, aspiring software engineer"
                 class="h-48 w-48 rounded-3xl object-cover shadow-2xl sm:h-64 sm:w-64 md:h-80 md:w-80 lg:h-96 lg:w-96"
-                loading="eager"
+                loading="lazy"
                 decoding="async"
             />
         </figure>
