@@ -99,27 +99,30 @@
     const entryNumber = $derived(String(displayIndex + 1).padStart(2, "0"));
     const entryTotal = $derived(String(entries.length).padStart(2, "0"));
     const segmentFill = (index: number) => {
-        if (index === 0) {
-            return approachFill;
-        }
-
         if (currentIndex > index) {
             return 1;
         }
 
-        if (currentIndex === index) {
-            if (slideBlend > 0) {
-                return 1;
+        if (index === 0) {
+            if (scrollProgress <= 0) {
+                return approachFill;
             }
 
-            return clamp(segmentProgress / holdRatio, 0, 1);
+            return 1;
         }
 
-        if (currentIndex === index - 1 && slideBlend > 0) {
-            return slideBlend;
+        const segmentStart = index - (1 - holdRatio);
+        const segmentEnd = index + holdRatio;
+
+        if (scrollProgress <= segmentStart) {
+            return 0;
         }
 
-        return 0;
+        if (scrollProgress >= segmentEnd) {
+            return 1;
+        }
+
+        return clamp((scrollProgress - segmentStart) / (segmentEnd - segmentStart), 0, 1);
     };
 
     const travelOffset = $derived(panelHeight * slideTravelRatio);
@@ -149,14 +152,14 @@
         }
 
         if (scrollY >= sectionEnd) {
-            scrollProgress = entries.length - 1;
+            scrollProgress = entries.length;
             return;
         }
 
         scrollProgress = clamp(
             (scrollY - sectionTop) / (viewportHeight * scrollLengthPerEntry),
             0,
-            entries.length - 1,
+            entries.length,
         );
     };
 
@@ -212,6 +215,20 @@
 
     const updatePanelHeight = () => {
         panelHeight = panelRef?.clientHeight ?? window.innerHeight;
+    };
+
+    const scrollToEntry = (index: number) => {
+        if (!sectionRef || viewMode !== "scroll") return;
+
+        const sectionTop = sectionRef.offsetTop;
+        const viewportHeight = window.innerHeight;
+        const targetProgress = index + holdRatio;
+        const targetScrollY = sectionTop + targetProgress * scrollLengthPerEntry * viewportHeight;
+
+        window.scrollTo({
+            top: targetScrollY,
+            behavior: reducedMotion ? "auto" : "smooth",
+        });
     };
 
     const scrollViewIn = (node: Element) =>
@@ -286,30 +303,35 @@
     {#if viewMode === "scroll"}
         <div in:scrollViewIn out:scrollViewOut>
             <div bind:this={panelRef} class="sticky top-0 h-screen overflow-hidden">
-            <div
-                class="absolute top-1/2 right-4 flex -translate-y-1/2 flex-col items-center sm:right-6 lg:right-8"
-                aria-hidden="true"
+            <nav
+                class="absolute top-1/2 right-4 z-30 flex -translate-y-1/2 flex-col items-center sm:right-6 lg:right-8"
+                aria-label="Timeline progress"
             >
                 <div class="flex flex-col items-center gap-2 sm:gap-2.5">
-                    {#each entries as _, index (index)}
+                    {#each entries as entry, index (index)}
                         {@const fill = segmentFill(index)}
                         {@const weight = dotWeight(index)}
                         {@const isActive = weight > 0.72}
-                        <div
-                            class="relative overflow-hidden rounded-md bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_14%,transparent)] transition-all duration-300 ease-out {isActive
+                        <button
+                            type="button"
+                            class="relative overflow-hidden rounded-md bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_14%,transparent)] transition-all duration-300 ease-out hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) {isActive
                                 ? 'h-24 w-2.5 shadow-[0_0_14px_color-mix(in_srgb,var(--accent)_28%,transparent)] sm:h-28 sm:w-3'
                                 : 'h-20 w-2 opacity-70 sm:h-24 sm:w-2'}"
+                            aria-label="Go to {entry.title}"
+                            aria-current={displayIndex === index ? "step" : undefined}
+                            onclick={() => scrollToEntry(index)}
                         >
-                            <div
-                                class="absolute top-0 left-0 w-full rounded-md bg-linear-to-b from-(--accent) to-[color-mix(in_srgb,var(--accent)_70%,transparent)] transition-[height] duration-150 ease-out {isActive
+                            <span
+                                class="pointer-events-none absolute top-0 left-0 w-full rounded-md bg-linear-to-b from-(--accent) to-[color-mix(in_srgb,var(--accent)_70%,transparent)] transition-[height] duration-150 ease-out {isActive
                                     ? 'shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_38%,transparent)]'
                                     : ''}"
                                 style:height="{fill * 100}%"
-                            ></div>
-                        </div>
+                                aria-hidden="true"
+                            ></span>
+                        </button>
                     {/each}
                 </div>
-            </div>
+            </nav>
 
             <div class="absolute inset-0 flex items-center justify-center px-5 py-20 sm:px-10 sm:py-24 lg:px-16">
                 <div
