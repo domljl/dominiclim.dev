@@ -5,14 +5,19 @@
     import ThemeToggle from "@/components/ThemeToggle.svelte";
 
     const links = [
-        { label: "About", href: "#about" },
-        { label: "Timeline", href: "#timeline" },
-        { label: "Certifications", href: "#certifications" },
-        { label: "Projects", href: "#projects" },
-        { label: "Contact", href: "#contact" },
+        { label: "About", id: "about" },
+        { label: "Timeline", id: "timeline" },
+        { label: "Certifications", id: "certifications" },
+        { label: "Projects", id: "projects" },
+        { label: "Contact", id: "contact" },
     ] as const;
 
-    const sectionIds = links.map((link) => link.href.slice(1));
+    type SectionId = (typeof links)[number]["id"];
+
+    const sectionIds = links.map((link) => link.id);
+
+    const isSectionId = (value: string): value is SectionId =>
+        sectionIds.some((id) => id === value);
     const idleDisplacementScale = 77;
     const scrollOffsetRatio = 0.35;
 
@@ -61,11 +66,35 @@
         for (const id of sectionIds) {
             const section = document.getElementById(id);
             if (section && section.getBoundingClientRect().top <= offset) {
-                current = `#${id}`;
+                current = id;
             }
         }
 
         activeSection = current;
+    };
+
+    const clearUrlHash = () => {
+        const cleanUrl = `${window.location.pathname}${window.location.search}`;
+        if (window.location.hash) {
+            history.replaceState(history.state, "", cleanUrl);
+        }
+    };
+
+    const scrollToSection = (sectionId: string) => {
+        const section = document.getElementById(sectionId);
+        if (!section) return;
+
+        section.scrollIntoView({
+            behavior: reducedMotion ? "auto" : "smooth",
+            block: "start",
+        });
+        clearUrlHash();
+        closeMenu();
+    };
+
+    const handleNavClick = (event: MouseEvent, sectionId: string) => {
+        event.preventDefault();
+        scrollToSection(sectionId);
     };
 
     const closeMenu = () => {
@@ -74,10 +103,6 @@
 
     const toggleMenu = () => {
         menuOpen = !menuOpen;
-    };
-
-    const handleLinkClick = () => {
-        closeMenu();
     };
 
     const handleMouseMove = (event: MouseEvent) => {
@@ -134,6 +159,11 @@
     onMount(() => {
         reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         updateActiveSection();
+
+        const hash = window.location.hash.slice(1);
+        if (isSectionId(hash)) {
+            requestAnimationFrame(() => scrollToSection(hash));
+        }
     });
 
     $effect(() => {
@@ -195,13 +225,14 @@
             <ul
                 class="relative z-4 m-0 flex list-none items-center justify-center gap-3 px-5 py-3 sm:gap-5 sm:px-10 sm:py-4"
             >
-                {#each links as link (link.href)}
-                    {@const isActive = activeSection === link.href}
+                {#each links as link (link.id)}
+                    {@const isActive = activeSection === link.id}
                     <li>
                         <a
-                            href={link.href}
+                            href="/"
                             class="{navItemBase} {isActive ? navItemActive : ''}"
                             aria-current={isActive ? "location" : undefined}
+                            onclick={(event) => handleNavClick(event, link.id)}
                         >
                             {link.label}
                         </a>
@@ -278,8 +309,8 @@
                     </div>
 
                     <ul class="relative z-4 m-0 list-none space-y-0.5 p-2">
-                        {#each links as link, index (link.href)}
-                            {@const isActive = activeSection === link.href}
+                        {#each links as link, index (link.id)}
+                            {@const isActive = activeSection === link.id}
                             <li
                                 in:fly={reducedMotion
                                     ? { duration: 0 }
@@ -291,10 +322,10 @@
                                       }}
                             >
                                 <a
-                                    href={link.href}
+                                    href="/"
                                     class="{mobileNavItemBase} {isActive ? mobileNavItemActive : ''}"
                                     aria-current={isActive ? "location" : undefined}
-                                    onclick={handleLinkClick}
+                                    onclick={(event) => handleNavClick(event, link.id)}
                                 >
                                     <span
                                         class="h-1.5 w-1.5 shrink-0 rounded-full transition-colors duration-200 {isActive

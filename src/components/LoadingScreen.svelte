@@ -112,6 +112,27 @@
         tryExit();
     }
 
+    function setScrollLock(locked: boolean) {
+        if (typeof document === "undefined") return;
+
+        const { documentElement: root, body } = document;
+        if (locked) {
+            root.style.overflow = "hidden";
+            root.style.overscrollBehavior = "none";
+            body.style.overflow = "hidden";
+            body.style.overscrollBehavior = "none";
+            body.style.touchAction = "none";
+        } else {
+            root.style.overflow = "";
+            root.style.overscrollBehavior = "";
+            body.style.overflow = "";
+            body.style.overscrollBehavior = "";
+            body.style.touchAction = "";
+        }
+    }
+
+    $: setScrollLock(isVisible && (exitPhase === "idle" || exitPhase === "push"));
+
     const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -890,6 +911,7 @@
         })();
 
         return () => {
+            setScrollLock(false);
             unsubscribeTheme?.();
             window.removeEventListener("load", onLoad);
             window.removeEventListener("resize", onResize);
@@ -901,7 +923,10 @@
 </script>
 
 {#if isVisible || isAnimatingExit}
-    <div bind:this={hostEl} class="fixed inset-0 z-9999 {isAnimatingExit ? 'pointer-events-none' : ''}">
+    <div
+        bind:this={hostEl}
+        class="fixed inset-0 z-9999 overscroll-none touch-none {isAnimatingExit ? 'pointer-events-none' : ''}"
+    >
         <div
             class="absolute inset-0 bg-(--background)"
             style:opacity={hostOpacity}

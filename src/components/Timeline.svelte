@@ -22,6 +22,11 @@
     const incomingTiltDeg = 45;
     const incomingDepthPx = 180;
     const incomingScaleStart = 0.94;
+    const compactOutgoingFadeEnd = 0.52;
+    const compactIncomingFadeStart = 0.38;
+    const compactIncomingLiftRatio = 0.72;
+    const compactOutgoingLiftRatio = 0.35;
+    const compactIncomingScaleStart = 0.97;
 
     const viewInMs = 460;
     const viewOutMs = 320;
@@ -178,7 +183,30 @@
         );
     };
 
-    const slideStyle = (index: number) => {
+    type SlideStyle = {
+        visible: boolean;
+        translateY: number;
+        translateZ: number;
+        rotateX: number;
+        scale: number;
+        opacity: number;
+        zIndex: number;
+        pointerEvents: "auto" | "none";
+        transformOrigin: string;
+    };
+
+    const compactOutgoingOpacity = (blend: number) => {
+        if (blend <= 0) return 1;
+        if (blend >= compactOutgoingFadeEnd) return 0;
+        return clamp(1 - blend / compactOutgoingFadeEnd, 0, 1);
+    };
+
+    const compactIncomingOpacity = (blend: number) => {
+        if (blend <= compactIncomingFadeStart) return 0;
+        return clamp((blend - compactIncomingFadeStart) / (1 - compactIncomingFadeStart), 0, 1);
+    };
+
+    const compactSlideStyle = (index: number): SlideStyle | { visible: false } => {
         if (currentIndex === nextIndex && index === currentIndex) {
             return {
                 visible: true,
@@ -188,7 +216,58 @@
                 scale: 1,
                 opacity: 1,
                 zIndex: 20,
-                pointerEvents: "auto" as const,
+                pointerEvents: "auto",
+                transformOrigin: "center center",
+            };
+        }
+
+        if (index === currentIndex && slideBlend < 1) {
+            const opacity = compactOutgoingOpacity(slideBlend);
+
+            return {
+                visible: opacity > 0.02,
+                translateY: -slideBlend * travelOffset * compactOutgoingLiftRatio,
+                translateZ: 0,
+                rotateX: 0,
+                scale: 1 - slideBlend * (1 - compactIncomingScaleStart),
+                opacity,
+                zIndex: 20,
+                pointerEvents: opacity > 0.45 ? "auto" : "none",
+                transformOrigin: "center center",
+            };
+        }
+
+        if (index === nextIndex && slideBlend > 0) {
+            const opacity = compactIncomingOpacity(slideBlend);
+            const lift = 1 - slideBlend;
+
+            return {
+                visible: opacity > 0.02,
+                translateY: lift * travelOffset * compactIncomingLiftRatio,
+                translateZ: 0,
+                rotateX: 0,
+                scale: compactIncomingScaleStart + slideBlend * (1 - compactIncomingScaleStart),
+                opacity,
+                zIndex: 21,
+                pointerEvents: opacity > 0.55 ? "auto" : "none",
+                transformOrigin: "center center",
+            };
+        }
+
+        return { visible: false };
+    };
+
+    const desktopSlideStyle = (index: number): SlideStyle | { visible: false } => {
+        if (currentIndex === nextIndex && index === currentIndex) {
+            return {
+                visible: true,
+                translateY: 0,
+                translateZ: 0,
+                rotateX: 0,
+                scale: 1,
+                opacity: 1,
+                zIndex: 20,
+                pointerEvents: "auto",
                 transformOrigin: "center center",
             };
         }
@@ -202,7 +281,7 @@
                 scale: reducedMotion ? 1 : 1 - slideBlend * (1 - incomingScaleStart),
                 opacity: outgoingOpacity,
                 zIndex: 20,
-                pointerEvents: slideBlend < outgoingOpacityFadeStart ? ("auto" as const) : ("none" as const),
+                pointerEvents: slideBlend < outgoingOpacityFadeStart ? "auto" : "none",
                 transformOrigin: "center top",
             };
         }
@@ -218,39 +297,60 @@
                 scale: reducedMotion ? 1 : incomingScaleStart + slideBlend * (1 - incomingScaleStart),
                 opacity: incomingOpacity,
                 zIndex: 21,
-                pointerEvents: slideBlend > 0.65 ? ("auto" as const) : ("none" as const),
+                pointerEvents: slideBlend > 0.65 ? "auto" : "none",
                 transformOrigin: "center bottom",
             };
         }
 
-        return { visible: false } as const;
+        return { visible: false };
     };
+
+    const slideStyle = (index: number) =>
+        isCompactView ? compactSlideStyle(index) : desktopSlideStyle(index);
 
     const dotWeight = (index: number) => clamp(1 - Math.abs(indicatorProgress - index), 0, 1);
 
     const compactVerticalPadding = 168;
 
-    const updateCompactScale = () => {
-        const activeCard = cardRefs[displayIndex];
+    const getCardCompactScale = (index: number) => {
+        if (!isCompactView || viewMode !== "scroll") return 1;
 
-        if (!isCompactView || viewMode !== "scroll" || !activeCard) {
-            compactScale = 1;
-            compactCardHeight = undefined;
-            return;
-        }
+        const card = cardRefs[index];
+        if (!card) return compactScale;
 
         const availableHeight = Math.max(0, panelHeight - compactVerticalPadding);
-        const naturalHeight = activeCard.scrollHeight;
+        const naturalHeight = card.scrollHeight;
 
-        if (naturalHeight <= 0 || availableHeight <= 0) {
+        if (naturalHeight <= 0 || availableHeight <= 0) return 1;
+
+        return Math.min(1, availableHeight / naturalHeight);
+    };
+
+    const getCardCompactHeight = (index: number) => {
+        const scale = getCardCompactScale(index);
+        const card = cardRefs[index];
+
+        if (!card || scale >= 1) return undefined;
+
+        return card.scrollHeight * scale;
+    };
+
+    const updateCompactScale = () => {
+        if (!isCompactView || viewMode !== "scroll") {
             compactScale = 1;
             compactCardHeight = undefined;
             return;
         }
 
-        const scale = Math.min(1, availableHeight / naturalHeight);
-        compactScale = scale;
-        compactCardHeight = naturalHeight * scale;
+        const activeCard = cardRefs[displayIndex];
+        if (!activeCard) {
+            compactScale = 1;
+            compactCardHeight = undefined;
+            return;
+        }
+
+        compactScale = getCardCompactScale(displayIndex);
+        compactCardHeight = getCardCompactHeight(displayIndex);
     };
 
     const updatePanelHeight = () => {
@@ -265,7 +365,8 @@
             return;
         }
 
-        const index = displayIndex;
+        const indices =
+            slideBlend > 0 && slideBlend < 1 ? [currentIndex, nextIndex] : [displayIndex];
         let observer: ResizeObserver | undefined;
         let cancelled = false;
 
@@ -273,13 +374,14 @@
             await tick();
             if (cancelled) return;
 
-            const node = cardRefs[index];
-            if (!node) return;
-
             updateCompactScale();
             observer?.disconnect();
             observer = new ResizeObserver(() => updateCompactScale());
-            observer.observe(node);
+
+            for (const index of indices) {
+                const node = cardRefs[index];
+                if (node) observer.observe(node);
+            }
         };
 
         setup();
@@ -424,12 +526,16 @@
                 >
                     {#each entries as entry, index (entry.title)}
                         {@const slide = slideStyle(index)}
+                        {@const cardScale = isCompactView ? getCardCompactScale(index) : 1}
+                        {@const cardHeight = isCompactView ? getCardCompactHeight(index) : undefined}
                         {#if slide.visible}
                             <article
                                 class="absolute inset-x-0 top-1/2 flex justify-center px-0 sm:overflow-hidden sm:px-6"
-                                style:transform={isCompactView || reducedMotion
-                                    ? `translate3d(0, calc(-50% + ${slide.translateY}px), 0)`
-                                    : `translate3d(0, calc(-50% + ${slide.translateY}px), ${slide.translateZ}px) rotateX(${slide.rotateX}deg) scale(${slide.scale})`}
+                                style:transform={isCompactView
+                                    ? `translate3d(0, calc(-50% + ${slide.translateY}px), 0) scale(${slide.scale})`
+                                    : reducedMotion
+                                      ? `translate3d(0, calc(-50% + ${slide.translateY}px), 0)`
+                                      : `translate3d(0, calc(-50% + ${slide.translateY}px), ${slide.translateZ}px) rotateX(${slide.rotateX}deg) scale(${slide.scale})`}
                                 style:transform-origin={slide.transformOrigin}
                                 style:transform-style={isCompactView ? undefined : "preserve-3d"}
                                 style:opacity={slide.opacity}
@@ -440,19 +546,13 @@
                             >
                                 <div
                                     class="w-full max-w-7xl"
-                                    style:height={isCompactView && index === displayIndex && compactCardHeight
-                                        ? `${compactCardHeight}px`
-                                        : undefined}
+                                    style:height={cardHeight ? `${cardHeight}px` : undefined}
                                 >
                                     <div
                                         use:trackCardRef={index}
-                                        style:transform={isCompactView && index === displayIndex && compactScale < 1
-                                            ? `scale(${compactScale})`
-                                            : undefined}
+                                        style:transform={cardScale < 1 ? `scale(${cardScale})` : undefined}
                                         style:transform-origin="top center"
-                                        style:width={isCompactView && index === displayIndex && compactScale < 1
-                                            ? `${100 / compactScale}%`
-                                            : undefined}
+                                        style:width={cardScale < 1 ? `${100 / cardScale}%` : undefined}
                                     >
                                         {@render entryCard(entry, true, index)}
                                     </div>
