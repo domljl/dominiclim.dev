@@ -39,6 +39,21 @@
     let panelHeight = $state(800);
     let viewMode = $state<ViewMode>("scroll");
     let reducedMotion = $state(false);
+    let isCompactView = $state(false);
+    let compactScale = $state(1);
+    let compactCardHeight = $state<number | undefined>(undefined);
+
+    const cardRefs: Record<number, HTMLElement | undefined> = {};
+
+    const trackCardRef = (node: HTMLElement, index: number) => {
+        cardRefs[index] = node;
+
+        return {
+            destroy() {
+                delete cardRefs[index];
+            },
+        };
+    };
     let resumeTabByEntry = $state<Record<string, string>>({});
 
     const resumeTabKey = (label: string) => {
@@ -125,7 +140,7 @@
         return clamp((scrollProgress - segmentStart) / (segmentEnd - segmentStart), 0, 1);
     };
 
-    const travelOffset = $derived(panelHeight * slideTravelRatio);
+    const travelOffset = $derived(panelHeight * (isCompactView ? 0.18 : slideTravelRatio));
 
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -213,9 +228,67 @@
 
     const dotWeight = (index: number) => clamp(1 - Math.abs(indicatorProgress - index), 0, 1);
 
+    const compactVerticalPadding = 168;
+
+    const updateCompactScale = () => {
+        const activeCard = cardRefs[displayIndex];
+
+        if (!isCompactView || viewMode !== "scroll" || !activeCard) {
+            compactScale = 1;
+            compactCardHeight = undefined;
+            return;
+        }
+
+        const availableHeight = Math.max(0, panelHeight - compactVerticalPadding);
+        const naturalHeight = activeCard.scrollHeight;
+
+        if (naturalHeight <= 0 || availableHeight <= 0) {
+            compactScale = 1;
+            compactCardHeight = undefined;
+            return;
+        }
+
+        const scale = Math.min(1, availableHeight / naturalHeight);
+        compactScale = scale;
+        compactCardHeight = naturalHeight * scale;
+    };
+
     const updatePanelHeight = () => {
         panelHeight = panelRef?.clientHeight ?? window.innerHeight;
+        updateCompactScale();
     };
+
+    $effect(() => {
+        if (!isCompactView || viewMode !== "scroll") {
+            compactScale = 1;
+            compactCardHeight = undefined;
+            return;
+        }
+
+        const index = displayIndex;
+        let observer: ResizeObserver | undefined;
+        let cancelled = false;
+
+        const setup = async () => {
+            await tick();
+            if (cancelled) return;
+
+            const node = cardRefs[index];
+            if (!node) return;
+
+            updateCompactScale();
+            observer?.disconnect();
+            observer = new ResizeObserver(() => updateCompactScale());
+            observer.observe(node);
+        };
+
+        setup();
+
+        return () => {
+            cancelled = true;
+            observer?.disconnect();
+        };
+    });
 
     const scrollToEntry = (index: number) => {
         if (!sectionRef || viewMode !== "scroll") return;
@@ -280,6 +353,15 @@
 
     onMount(async () => {
         reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        const compactQuery = window.matchMedia("(max-width: 639px)");
+        isCompactView = compactQuery.matches;
+        compactQuery.addEventListener("change", (event) => {
+            isCompactView = event.matches;
+            updatePanelHeight();
+            updateCompactScale();
+        });
+
         updateScrollProgress();
         await tick();
         updatePanelHeight();
@@ -302,9 +384,9 @@
 >
     {#if viewMode === "scroll"}
         <div in:scrollViewIn out:scrollViewOut>
-            <div bind:this={panelRef} class="sticky top-0 h-screen overflow-hidden">
+            <div bind:this={panelRef} class="sticky top-0 h-dvh overflow-hidden">
             <nav
-                class="absolute top-1/2 right-4 z-30 flex -translate-y-1/2 flex-col items-center sm:right-6 lg:right-8"
+                class="absolute top-1/2 right-3 z-30 flex -translate-y-1/2 flex-col items-center max-sm:top-auto max-sm:right-1.5 max-sm:bottom-20 max-sm:translate-y-0 sm:right-6 lg:right-8"
                 aria-label="Timeline progress"
             >
                 <div class="flex flex-col items-center gap-2 sm:gap-2.5">
@@ -315,8 +397,8 @@
                         <button
                             type="button"
                             class="relative overflow-hidden rounded-md bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_14%,transparent)] transition-all duration-300 ease-out hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) {isActive
-                                ? 'h-24 w-2.5 shadow-[0_0_14px_color-mix(in_srgb,var(--accent)_28%,transparent)] sm:h-28 sm:w-3'
-                                : 'h-20 w-2 opacity-70 sm:h-24 sm:w-2'}"
+                                ? 'h-16 w-2 shadow-[0_0_14px_color-mix(in_srgb,var(--accent)_28%,transparent)] sm:h-28 sm:w-3'
+                                : 'h-14 w-1.5 opacity-70 sm:h-24 sm:w-2'}"
                             aria-label="Go to {entry.title}"
                             aria-current={displayIndex === index ? "step" : undefined}
                             onclick={() => scrollToEntry(index)}
@@ -333,27 +415,47 @@
                 </div>
             </nav>
 
-            <div class="absolute inset-0 flex items-center justify-center px-5 py-20 sm:px-10 sm:py-24 lg:px-16">
+            <div
+                class="absolute inset-0 flex items-center justify-center px-3 py-20 pr-7 sm:px-10 sm:py-24 sm:pr-10 lg:px-16"
+            >
                 <div
                     class="relative h-full w-full max-w-360 overflow-hidden"
-                    style:perspective={reducedMotion ? undefined : "1400px"}
+                    style:perspective={reducedMotion || isCompactView ? undefined : "1400px"}
                 >
                     {#each entries as entry, index (entry.title)}
                         {@const slide = slideStyle(index)}
                         {#if slide.visible}
                             <article
-                                class="absolute inset-x-0 top-1/2 flex justify-center px-2 sm:px-6"
-                                style:transform="translate3d(0, calc(-50% + {slide.translateY}px), {slide.translateZ}px) rotateX({slide.rotateX}deg) scale({slide.scale})"
+                                class="absolute inset-x-0 top-1/2 flex justify-center px-0 sm:overflow-hidden sm:px-6"
+                                style:transform={isCompactView || reducedMotion
+                                    ? `translate3d(0, calc(-50% + ${slide.translateY}px), 0)`
+                                    : `translate3d(0, calc(-50% + ${slide.translateY}px), ${slide.translateZ}px) rotateX(${slide.rotateX}deg) scale(${slide.scale})`}
                                 style:transform-origin={slide.transformOrigin}
-                                style:transform-style="preserve-3d"
+                                style:transform-style={isCompactView ? undefined : "preserve-3d"}
                                 style:opacity={slide.opacity}
                                 style:z-index={slide.zIndex}
                                 style:pointer-events={slide.pointerEvents}
                                 style:will-change="transform, opacity"
                                 aria-hidden={index !== displayIndex}
                             >
-                                <div class="w-full max-w-7xl">
-                                    {@render entryCard(entry, true, index)}
+                                <div
+                                    class="w-full max-w-7xl"
+                                    style:height={isCompactView && index === displayIndex && compactCardHeight
+                                        ? `${compactCardHeight}px`
+                                        : undefined}
+                                >
+                                    <div
+                                        use:trackCardRef={index}
+                                        style:transform={isCompactView && index === displayIndex && compactScale < 1
+                                            ? `scale(${compactScale})`
+                                            : undefined}
+                                        style:transform-origin="top center"
+                                        style:width={isCompactView && index === displayIndex && compactScale < 1
+                                            ? `${100 / compactScale}%`
+                                            : undefined}
+                                    >
+                                        {@render entryCard(entry, true, index)}
+                                    </div>
                                 </div>
                             </article>
                         {/if}
@@ -364,7 +466,7 @@
             <button
                 bind:this={showAllButtonRef}
                 type="button"
-                class="absolute bottom-10 left-5 z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:left-8"
+                class="absolute bottom-4 left-3 z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:bottom-10 sm:left-8"
                 aria-label="Show full timeline"
                 onclick={showResume}
             >
@@ -456,17 +558,17 @@
 
 {#snippet entryCard(entry: TimelineEntry, expanded = false, cardIndex?: number)}
     {#if expanded && cardIndex === displayIndex}
-        <div class="mb-8 flex items-start justify-between gap-6 sm:mb-10">
-            <p class="m-0 text-sm font-medium tracking-[0.22em] text-(--foreground) uppercase sm:text-base">
+        <div class="mb-2 flex items-start justify-between gap-3 sm:mb-10 sm:gap-6">
+            <p class="m-0 text-xs font-medium tracking-[0.2em] text-(--foreground) uppercase sm:text-base sm:tracking-[0.22em]">
                 {entry.type}
             </p>
-            <p class="m-0 shrink-0 font-mono text-base text-(--foreground) sm:text-lg" aria-live="polite">
+            <p class="m-0 shrink-0 font-mono text-sm text-(--foreground) sm:text-lg" aria-live="polite">
                 {entryNumber}<span class="mx-1 text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">/</span>{entryTotal}
             </p>
         </div>
     {/if}
 
-    <div class="flex w-full flex-col gap-10 sm:flex-row sm:items-start sm:gap-12 lg:gap-20">
+    <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:gap-12 lg:gap-20">
         {@render entryMeta(entry, undefined, expanded)}
 
         {#if getScrollSections(entry).length > 0}
@@ -475,8 +577,8 @@
                 aria-hidden="true"
             ></div>
             <div
-                class="min-w-0 flex-1 text-left {expanded
-                    ? 'space-y-6 sm:space-y-8'
+                class="min-w-0 w-full flex-1 text-left {expanded
+                    ? 'space-y-3 sm:space-y-8'
                     : 'space-y-5'}"
             >
                 {#each getScrollSections(entry) as section (section.label)}
@@ -489,13 +591,13 @@
 
 {#snippet entryMeta(entry: TimelineEntry, index?: number, expanded = false)}
     <div
-        class="flex min-w-0 shrink-0 flex-col items-center gap-5 text-center {expanded
-            ? 'w-full sm:max-w-120 md:max-w-136 lg:max-w-xl'
-            : 'w-full sm:max-w-sm'}"
+        class="flex min-w-0 w-full shrink-0 flex-col gap-2 max-sm:items-stretch max-sm:text-left sm:items-center sm:gap-5 sm:text-center {expanded
+            ? 'sm:max-w-120 md:max-w-136 lg:max-w-xl'
+            : 'sm:max-w-sm'}"
     >
         {@render entryLogo(entry, expanded)}
 
-        <div class="min-w-0 w-full space-y-3">
+        <div class="min-w-0 w-full space-y-2 sm:space-y-3">
             {#if index !== undefined}
                 <p class="m-0 font-mono text-sm text-[color-mix(in_srgb,var(--foreground)_50%,transparent)]">
                     {String(index + 1).padStart(2, "0")}
@@ -503,9 +605,9 @@
             {/if}
 
             <h2
-                class="m-0 mx-auto max-w-full leading-tight font-medium tracking-tight text-(--foreground) {expanded
-                    ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
-                    : 'text-xl sm:text-2xl md:text-3xl'} {entry.titleLines?.length ? '' : 'truncate'}"
+                class="m-0 max-w-full leading-tight font-medium tracking-tight text-(--foreground) sm:mx-auto {expanded
+                    ? 'text-xl sm:text-3xl md:text-4xl lg:text-5xl'
+                    : 'text-lg sm:text-2xl md:text-3xl'} {entry.titleLines?.length ? '' : 'truncate'}"
                 title={entry.title}
             >
                 {#if entry.titleLines?.length}
@@ -517,15 +619,15 @@
                 {/if}
             </h2>
 
-            <p class="m-0 text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] {expanded ? 'text-lg sm:text-xl md:text-2xl' : 'text-base sm:text-lg'}">{entry.date}</p>
+            <p class="m-0 text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] {expanded ? 'text-sm sm:text-xl md:text-2xl' : 'text-sm sm:text-lg'}">{entry.date}</p>
 
             <a
                 href={entry.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="group relative inline-block max-w-full truncate pr-4 font-medium text-(--accent) no-underline after:pointer-events-none after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-full after:-translate-x-1/2 after:scale-x-0 after:rounded-full after:bg-(--accent) after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) focus-visible:after:scale-x-100 motion-reduce:after:duration-0 {expanded
-                    ? 'text-lg sm:text-xl md:text-2xl'
-                    : 'text-base sm:text-lg'}"
+                class="group relative inline-block max-w-full truncate pr-4 font-medium text-(--accent) no-underline max-sm:after:left-0 max-sm:after:translate-x-0 after:pointer-events-none after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-full after:-translate-x-1/2 after:scale-x-0 after:rounded-full after:bg-(--accent) after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) focus-visible:after:scale-x-100 motion-reduce:after:duration-0 {expanded
+                    ? 'text-base sm:text-xl md:text-2xl'
+                    : 'text-sm sm:text-lg'}"
             >
                 {getOrganization(entry)}
                 <svg
@@ -549,19 +651,19 @@
 {/snippet}
 
 {#snippet detailSection(label: string, items: string[], expanded = false)}
-    <div class="space-y-3 sm:space-y-4">
-        <h3 class="m-0 text-sm font-medium tracking-[0.18em] text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase sm:text-base">
+    <div class="space-y-2 sm:space-y-4">
+        <h3 class="m-0 text-xs font-medium tracking-[0.16em] text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase sm:text-base sm:tracking-[0.18em]">
             {label}
         </h3>
 
         <ul
-            class="m-0 space-y-3 leading-relaxed text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] {expanded
-                ? 'text-lg sm:text-xl'
-                : 'text-base sm:text-lg'}"
+            class="m-0 space-y-2 leading-snug text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] sm:space-y-3 sm:leading-relaxed {expanded
+                ? 'text-sm sm:text-xl'
+                : 'text-sm sm:text-lg'}"
         >
             {#each items as item (item)}
-                <li class="flex gap-4">
-                    <span class="mt-2.5 h-1.5 w-5 shrink-0 rounded-full bg-(--accent) sm:mt-3 sm:h-2 sm:w-6" aria-hidden="true"></span>
+                <li class="flex gap-2.5 sm:gap-4">
+                    <span class="mt-1.5 h-1.5 w-4 shrink-0 rounded-full bg-(--accent) sm:mt-3 sm:h-2 sm:w-6" aria-hidden="true"></span>
                     <span>{item}</span>
                 </li>
             {/each}
@@ -571,11 +673,11 @@
 
 {#snippet entryLogo(entry: TimelineEntry, expanded = false)}
     {@const logoUrl = resolveLogo(entry.logo)}
-    <figure class="m-0 mx-auto shrink-0">
+    <figure class="m-0 w-full shrink-0 sm:mx-auto sm:w-auto">
         <div
-            class="flex items-center justify-center overflow-hidden rounded-3xl {expanded
-                ? 'h-52 w-52 sm:h-64 sm:w-64 md:h-72 md:w-72 lg:h-80 lg:w-80 xl:h-96 xl:w-96'
-                : 'h-24 w-24 sm:h-28 sm:w-28'}"
+            class="flex items-center justify-center overflow-hidden {expanded
+                ? 'aspect-square w-full max-h-40 sm:h-64 sm:w-64 sm:max-h-none md:h-72 md:w-72 lg:h-80 lg:w-80 xl:h-96 xl:w-96'
+                : 'h-20 w-20 sm:h-28 sm:w-28'}"
         >
             {#if logoUrl}
                 <img
@@ -599,7 +701,7 @@
 
 {#snippet resumeTabBar(entry: TimelineEntry, sections: ResumeSection[], activeTab: string)}
     <div
-        class="inline-flex max-w-full flex-wrap gap-1 rounded-full border border-[color-mix(in_srgb,var(--foreground)_12%,transparent)] bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--foreground)_8%,transparent)] backdrop-blur-md"
+        class="flex w-full flex-nowrap gap-0.5 rounded-xl border border-[color-mix(in_srgb,var(--foreground)_10%,transparent)] bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] p-0.5 sm:inline-flex sm:max-w-full sm:flex-wrap sm:gap-1 sm:rounded-full sm:p-1"
         role="tablist"
         aria-label="{getOrganization(entry)} highlights"
     >
@@ -612,7 +714,7 @@
                 id="resume-tab-{entry.title}-{tab}"
                 aria-selected={isActive}
                 aria-controls="resume-panel-{entry.title}-{tab}"
-                class="group relative overflow-hidden rounded-full px-3.5 py-2 text-xs font-medium transition-[transform,color,box-shadow] duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:px-4 sm:py-2.5 sm:text-sm {isActive
+                class="group relative min-w-0 flex-1 basis-0 overflow-hidden rounded-[0.65rem] px-1 py-2 text-[11px] font-medium transition-[transform,color,box-shadow] duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:flex-none sm:basis-auto sm:rounded-full sm:px-4 sm:py-2.5 sm:text-sm {isActive
                     ? 'text-white shadow-[0_2px_14px_color-mix(in_srgb,var(--accent)_38%,transparent)]'
                     : 'text-[color-mix(in_srgb,var(--foreground)_52%,transparent)] hover:text-[color-mix(in_srgb,var(--foreground)_82%,transparent)]'}"
                 onclick={() => setResumeTab(entry.title, tab)}
@@ -629,12 +731,14 @@
                     ></span>
                 {/if}
 
-                <span class="relative z-1 flex items-center gap-2">
-                    {resumeTabLabel(section.label)}
+                <span class="relative z-1 flex min-w-0 flex-col items-center gap-0.5 sm:flex-row sm:gap-2">
+                    <span class="max-w-full truncate leading-none">
+                        {resumeTabLabel(section.label)}
+                    </span>
                     <span
-                        class="min-w-5 rounded-full px-1.5 py-0.5 text-center font-mono text-[10px] leading-none tracking-tight sm:text-[11px] {isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] text-[color-mix(in_srgb,var(--foreground)_48%,transparent)] group-hover:text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]'}"
+                        class="shrink-0 font-mono text-[10px] leading-none tabular-nums sm:min-w-5 sm:rounded-full sm:px-1.5 sm:py-0.5 sm:text-[11px] {isActive
+                            ? 'text-white/80 sm:bg-white/20 sm:text-white'
+                            : 'text-[color-mix(in_srgb,var(--foreground)_42%,transparent)] sm:bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] sm:text-[color-mix(in_srgb,var(--foreground)_48%,transparent)] group-hover:text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]'}"
                     >
                         {section.items.length}
                     </span>
@@ -666,7 +770,7 @@
         <div class="flex gap-4 sm:gap-5">
             <figure class="m-0 shrink-0">
                 <div
-                    class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)] sm:h-16 sm:w-16"
+                    class="flex h-14 w-14 items-center justify-center overflow-hidden sm:h-16 sm:w-16"
                 >
                     {#if logoUrl}
                         <img
@@ -728,7 +832,7 @@
                             {@render resumeItemList(sections[0].items)}
                         </div>
                     {:else}
-                        <div class="space-y-4 pt-1">
+                        <div class="w-full space-y-3 pt-1 sm:space-y-4">
                             {@render resumeTabBar(entry, sections, activeTab)}
 
                             {#each sections as section (section.label)}
