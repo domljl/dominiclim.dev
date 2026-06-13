@@ -1,12 +1,18 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import About from "@/components/About.svelte";
-import Hero from "@/components/Hero.svelte";
-import Timeline from "@/components/Timeline.svelte";
+import About from "@/components/sections/About.svelte";
+import Certifications from "@/components/sections/Certifications.svelte";
+import Hero from "@/components/sections/Hero.svelte";
+import Contact from "@/components/sections/Contact.svelte";
+import Projects from "@/components/sections/Projects.svelte";
+import Timeline from "@/components/sections/Timeline.svelte";
 ---
 
 <BaseLayout>
     <Hero client:load />
     <About client:load />
     <Timeline client:load />
+    <Certifications client:load />
+    <Projects client:load />
+    <Contact client:load />
 </BaseLayout>
