@@ -17,6 +17,7 @@
     const cardOverlapDesktopPx = 64;
     const cardOverlapMobilePx = 24;
     const cardMaxWidthPx = 1056;
+    const carouselCardHeightPx = 550;
     const viewInMs = 460;
     const viewOutMs = 320;
     const noMotionTransition = { duration: 0 };
@@ -254,7 +255,7 @@
                 >
                     <div
                         bind:this={trackRef}
-                        class="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x py-5 [-ms-overflow-style:none] scrollbar-none max-sm:scroll-auto sm:scroll-smooth sm:py-10 [&::-webkit-scrollbar]:hidden"
+                        class="flex items-start snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x py-5 [-ms-overflow-style:none] scrollbar-none max-sm:scroll-auto sm:scroll-smooth sm:py-10 [&::-webkit-scrollbar]:hidden"
                         style:padding-inline="{trackPadding}px"
                         onscroll={queueActiveIndexUpdate}
                     >
@@ -264,8 +265,11 @@
                             {@const issuer = getIssuerLabel(cert.icon)}
                             <article
                                 use:trackCardRef={index}
-                                class="relative shrink-0 snap-center max-sm:transition-none sm:transition-[transform,opacity] sm:duration-300 sm:ease-out motion-reduce:transition-none"
+                                class="relative shrink-0 snap-center overflow-hidden max-sm:transition-none sm:transition-[transform,opacity] sm:duration-300 sm:ease-out motion-reduce:transition-none"
                                 style:width="{cardWidth}px"
+                                style:height="{carouselCardHeightPx}px"
+                                style:min-height="{carouselCardHeightPx}px"
+                                style:max-height="{carouselCardHeightPx}px"
                                 style:margin-inline="-{cardOverlap / 2}px"
                                 style:transform={style.transform}
                                 style:opacity={style.opacity}
@@ -556,7 +560,7 @@
     isActive: boolean,
 )}
     <div
-        class="relative min-h-56 overflow-hidden rounded-3xl bg-transparent p-5 shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] sm:min-h-72 sm:p-7 md:min-h-80 md:p-9"
+        class="relative h-full overflow-hidden rounded-3xl bg-transparent p-5 shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] sm:p-7 md:p-9"
     >
         <span
             class="pointer-events-none absolute inset-0 z-1 rounded-[inherit] backdrop-blur-md"
