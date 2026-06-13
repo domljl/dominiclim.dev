@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { scrollBehavior } from "@/lib/motion";
     import Logo from "@/components/ui/Logo.svelte";
 
     let reducedMotion = $state(false);
@@ -8,7 +9,7 @@
         event.preventDefault();
         window.scrollTo({
             top: 0,
-            behavior: reducedMotion ? "auto" : "smooth",
+            behavior: scrollBehavior(),
         });
     };
 

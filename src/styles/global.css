@@ -72,6 +72,16 @@ html {
     scroll-behavior: smooth;
 }
 
+@media (hover: none), (pointer: coarse) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    body {
+        overscroll-behavior-y: none;
+    }
+}
+
 body {
     min-height: 100vh;
     background-color: var(--background);

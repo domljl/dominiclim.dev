@@ -3,6 +3,8 @@
     import { cubicOut, cubicIn } from "svelte/easing";
     import { fly } from "svelte/transition";
     import ThemeToggle from "@/components/ui/ThemeToggle.svelte";
+    import { scrollBehavior } from "@/lib/motion";
+    import { addPassiveScrollListener } from "@/lib/schedule-frame";
 
     const links = [
         { label: "About", id: "about" },
@@ -96,7 +98,7 @@
         activeSection = sectionId;
 
         section.scrollIntoView({
-            behavior: reducedMotion ? "auto" : "smooth",
+            behavior: scrollBehavior(),
             block: "start",
         });
         clearUrlHash();
@@ -175,10 +177,18 @@
         reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         updateActiveSection();
 
+        const removeScrollListener = addPassiveScrollListener(updateActiveSection);
+        window.addEventListener("resize", updateActiveSection, { passive: true });
+
         const hash = window.location.hash.slice(1);
         if (isSectionId(hash)) {
             requestAnimationFrame(() => scrollToSection(hash));
         }
+
+        return () => {
+            removeScrollListener();
+            window.removeEventListener("resize", updateActiveSection);
+        };
     });
 
     $effect(() => {
@@ -206,8 +216,6 @@
         aria-hidden="true"
     ></div>
 {/snippet}
-
-<svelte:window onscroll={updateActiveSection} onresize={updateActiveSection} />
 
 <nav aria-label="Primary" class="relative w-auto lg:w-full lg:max-w-[calc(100vw-2rem)]">
     <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">

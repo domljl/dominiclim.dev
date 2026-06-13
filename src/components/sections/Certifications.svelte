@@ -8,6 +8,8 @@
         resolveIcon,
         type Certification,
     } from "@/lib/certifications";
+    import { scrollBehavior } from "@/lib/motion";
+    import { scheduleFrame } from "@/lib/schedule-frame";
 
     const entries = certifications;
     const cardWidthRatio = 0.92;
@@ -93,6 +95,10 @@
         activeIndex = closestIndex;
     };
 
+    const queueActiveIndexUpdate = () => {
+        scheduleFrame(updateActiveIndex);
+    };
+
     const scrollToIndex = async (index: number) => {
         const targetIndex = clamp(index, 0, entries.length - 1);
         const targetCard = cardRefs[targetIndex];
@@ -102,7 +108,7 @@
 
         trackRef.scrollTo({
             left: targetLeft,
-            behavior: reducedMotion ? "auto" : "smooth",
+            behavior: reducedMotion ? "auto" : scrollBehavior(),
         });
 
         activeIndex = targetIndex;
@@ -248,9 +254,9 @@
                 >
                     <div
                         bind:this={trackRef}
-                        class="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth py-5 [-ms-overflow-style:none] scrollbar-none sm:py-10 [&::-webkit-scrollbar]:hidden"
+                        class="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x py-5 [-ms-overflow-style:none] scrollbar-none max-sm:scroll-auto sm:scroll-smooth sm:py-10 [&::-webkit-scrollbar]:hidden"
                         style:padding-inline="{trackPadding}px"
-                        onscroll={updateActiveIndex}
+                        onscroll={queueActiveIndexUpdate}
                     >
                         {#each entries as cert, index (cert.title)}
                             {@const style = cardStyle(index)}
@@ -258,7 +264,7 @@
                             {@const issuer = getIssuerLabel(cert.icon)}
                             <article
                                 use:trackCardRef={index}
-                                class="relative shrink-0 snap-center transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none"
+                                class="relative shrink-0 snap-center max-sm:transition-none sm:transition-[transform,opacity] sm:duration-300 sm:ease-out motion-reduce:transition-none"
                                 style:width="{cardWidth}px"
                                 style:margin-inline="-{cardOverlap / 2}px"
                                 style:transform={style.transform}

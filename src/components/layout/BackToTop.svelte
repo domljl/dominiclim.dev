@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { scrollBehavior } from "@/lib/motion";
+    import { addPassiveScrollListener } from "@/lib/schedule-frame";
     import { cubicOut } from "svelte/easing";
     import { fly } from "svelte/transition";
 
@@ -19,17 +21,16 @@
     const scrollToTop = () => {
         window.scrollTo({
             top: 0,
-            behavior: reducedMotion ? "auto" : "smooth",
+            behavior: scrollBehavior(),
         });
     };
 
     onMount(() => {
         reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         handleScroll();
+        return addPassiveScrollListener(handleScroll);
     });
 </script>
-
-<svelte:window onscroll={handleScroll} />
 
 {#if isVisible}
     <button

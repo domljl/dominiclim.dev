@@ -1,12 +1,18 @@
 <script lang="ts">
+    import { onMount } from "svelte";
+    import { addPassiveScrollListener } from "@/lib/schedule-frame";
+
     let isVisible = $state(true);
 
     const handleScroll = () => {
         isVisible = window.scrollY < 100;
     };
-</script>
 
-<svelte:window onscroll={handleScroll} />
+    onMount(() => {
+        handleScroll();
+        return addPassiveScrollListener(handleScroll);
+    });
+</script>
 
 <div
     class="absolute inset-x-0 bottom-6 flex justify-center transition-opacity duration-300 sm:bottom-8 {isVisible

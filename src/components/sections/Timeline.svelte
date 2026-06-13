@@ -12,10 +12,13 @@
         type ResumeSection,
         type TimelineEntry,
     } from "@/lib/timeline";
+    import { scrollBehavior } from "@/lib/motion";
+    import { addPassiveScrollListener } from "@/lib/schedule-frame";
 
     const entries = timelineEntries;
     const holdRatio = 0.42;
-    const scrollLengthPerEntry = 1.2;
+    const desktopScrollLengthPerEntry = 1.2;
+    const mobileScrollLengthPerEntry = 1;
     const slideTravelRatio = 0.44;
     const incomingOpacityStart = 0.1;
     const outgoingOpacityFadeStart = 0.45;
@@ -49,6 +52,7 @@
     let compactCardHeight = $state<number | undefined>(undefined);
     let showScrollChrome = $state(true);
     let scrollChromeOpacity = $state(1);
+    let certificationsFade = $state(1);
 
     const cardRefs: Record<number, HTMLElement | undefined> = {};
 
@@ -117,6 +121,9 @@
         );
     });
     const displayIndex = $derived(slideBlend > 0.5 ? nextIndex : currentIndex);
+    const scrollLengthPerEntry = $derived(
+        isCompactView ? mobileScrollLengthPerEntry : desktopScrollLengthPerEntry,
+    );
     const indicatorProgress = $derived(currentIndex + slideBlend);
     const entryNumber = $derived(String(displayIndex + 1).padStart(2, "0"));
     const entryTotal = $derived(String(entries.length).padStart(2, "0"));
@@ -188,17 +195,7 @@
             entries.length,
         );
 
-        const certificationsSection = document.getElementById("certifications");
-        const certificationsTop = certificationsSection?.getBoundingClientRect().top;
-
-        let opacity = 1;
-
-        if (certificationsTop !== undefined && certificationsTop < viewportHeight * 0.95) {
-            opacity = Math.min(
-                opacity,
-                clamp((certificationsTop - viewportHeight * 0.55) / (viewportHeight * 0.4), 0, 1),
-            );
-        }
+        let opacity = certificationsFade;
 
         const timelineEndFadeStart = sectionEnd - viewportHeight * 0.3;
         if (scrollY > timelineEndFadeStart) {
@@ -431,7 +428,7 @@
 
         window.scrollTo({
             top: targetScrollY,
-            behavior: reducedMotion ? "auto" : "smooth",
+            behavior: scrollBehavior(),
         });
     };
 
@@ -478,6 +475,7 @@
 
         viewMode = "scroll";
         await tick();
+        updatePanelHeight();
         updateScrollProgress();
         focusAfterViewTransition(() => showAllButtonRef);
     };
@@ -493,19 +491,45 @@
             updateCompactScale();
         });
 
+        const certificationsSection = document.getElementById("certifications");
+        let certificationsObserver: IntersectionObserver | undefined;
+
+        if (certificationsSection) {
+            certificationsObserver = new IntersectionObserver(
+                ([entry]) => {
+                    const viewportHeight = window.innerHeight;
+                    const top = entry.boundingClientRect.top;
+                    certificationsFade = clamp(
+                        (top - viewportHeight * 0.55) / (viewportHeight * 0.4),
+                        0,
+                        1,
+                    );
+                    updateScrollProgress();
+                },
+                { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
+            );
+            certificationsObserver.observe(certificationsSection);
+        }
+
+        const removeScrollListener = addPassiveScrollListener(updateScrollProgress);
+        const onResize = () => {
+            updateScrollProgress();
+            updatePanelHeight();
+        };
+
+        window.addEventListener("resize", onResize, { passive: true });
+
         updateScrollProgress();
         await tick();
         updatePanelHeight();
+
+        return () => {
+            removeScrollListener();
+            certificationsObserver?.disconnect();
+            window.removeEventListener("resize", onResize);
+        };
     });
 </script>
-
-<svelte:window
-    onscroll={updateScrollProgress}
-    onresize={() => {
-        updateScrollProgress();
-        updatePanelHeight();
-    }}
-/>
 
 <section
     bind:this={sectionRef}
@@ -515,7 +539,7 @@
 >
     {#if viewMode === "scroll"}
         <div in:scrollViewIn out:scrollViewOut>
-            <div bind:this={panelRef} class="sticky top-0 h-dvh overflow-hidden">
+            <div bind:this={panelRef} class="sticky top-0 h-dvh touch-pan-y overflow-hidden">
             <nav
                 class="absolute top-1/2 right-3 z-30 flex -translate-y-1/2 flex-col items-center max-sm:top-auto max-sm:right-1.5 max-sm:bottom-20 max-sm:translate-y-0 sm:right-6 lg:right-8 {showScrollChrome
                     ? 'pointer-events-auto'
@@ -574,7 +598,7 @@
                                 style:opacity={slide.opacity}
                                 style:z-index={slide.zIndex}
                                 style:pointer-events={slide.pointerEvents}
-                                style:will-change="transform, opacity"
+                                style:will-change={isCompactView ? undefined : "transform, opacity"}
                                 aria-hidden={index !== displayIndex}
                             >
                                 <div
