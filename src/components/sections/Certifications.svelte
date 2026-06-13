@@ -10,8 +10,10 @@
     } from "@/lib/certifications";
 
     const entries = certifications;
-    const cardOverlapPx = 64;
     const cardWidthRatio = 0.92;
+    const cardWidthRatioMobile = 0.96;
+    const cardOverlapDesktopPx = 64;
+    const cardOverlapMobilePx = 24;
     const cardMaxWidthPx = 1056;
     const viewInMs = 460;
     const viewOutMs = 320;
@@ -27,6 +29,7 @@
     let activeIndex = $state(0);
     let reducedMotion = $state(false);
     let cardWidth = $state(320);
+    let cardOverlap = $state(64);
     let trackPadding = $state(0);
     let viewMode = $state<ViewMode>("carousel");
 
@@ -50,10 +53,15 @@
     const clamp = (value: number, min: number, max: number) =>
         Math.min(max, Math.max(min, value));
 
+    const isMobileTrack = () => (trackRef?.clientWidth ?? 0) < 640;
+
+    const getCardOverlap = () => (isMobileTrack() ? cardOverlapMobilePx : cardOverlapDesktopPx);
+
     const getCardWidth = () => {
         if (!trackRef) return cardMaxWidthPx;
         const viewportWidth = trackRef.clientWidth;
-        return Math.min(cardMaxWidthPx, viewportWidth * cardWidthRatio);
+        const ratio = isMobileTrack() ? cardWidthRatioMobile : cardWidthRatio;
+        return Math.min(cardMaxWidthPx, viewportWidth * ratio);
     };
 
     const getCenterOffset = () => {
@@ -139,6 +147,7 @@
         if (viewMode !== "carousel") return;
 
         cardWidth = getCardWidth();
+        cardOverlap = getCardOverlap();
         trackPadding = getCenterOffset();
         await tick();
         updateActiveIndex();
@@ -207,10 +216,10 @@
     bind:this={sectionRef}
     id="certifications"
     aria-label="Certifications"
-    class="relative scroll-mt-28 px-4 py-20 sm:scroll-mt-32 sm:px-6 sm:py-24 {viewMode === 'carousel' ? 'flex min-h-[85vh] flex-col justify-center' : ''}"
+    class="relative scroll-mt-28 px-4 py-20 sm:scroll-mt-32 sm:px-6 sm:py-24 {viewMode === 'carousel' ? 'flex min-h-0 flex-col justify-center sm:min-h-[75vh] lg:min-h-[85vh]' : ''}"
 >
     <div class="mx-auto w-full max-w-360">
-        <div class="mb-8 flex items-end justify-between gap-4 sm:mb-10">
+        <div class="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <div class="space-y-2 sm:space-y-3">
                 <p
                     class="m-0 text-xs font-medium tracking-[0.2em] text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] uppercase sm:text-sm sm:tracking-[0.22em]"
@@ -239,7 +248,7 @@
                 >
                     <div
                         bind:this={trackRef}
-                        class="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth py-8 [-ms-overflow-style:none] scrollbar-none sm:py-10 [&::-webkit-scrollbar]:hidden"
+                        class="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth py-5 [-ms-overflow-style:none] scrollbar-none sm:py-10 [&::-webkit-scrollbar]:hidden"
                         style:padding-inline="{trackPadding}px"
                         onscroll={updateActiveIndex}
                     >
@@ -251,7 +260,7 @@
                                 use:trackCardRef={index}
                                 class="relative shrink-0 snap-center transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none"
                                 style:width="{cardWidth}px"
-                                style:margin-inline="-{cardOverlapPx / 2}px"
+                                style:margin-inline="-{cardOverlap / 2}px"
                                 style:transform={style.transform}
                                 style:opacity={style.opacity}
                                 style:z-index={style.zIndex}
@@ -330,7 +339,7 @@
 )}
     <button
         type="button"
-        class="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-transparent shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow,opacity] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) disabled:pointer-events-none disabled:opacity-35 motion-reduce:hover:scale-100 motion-reduce:active:scale-100 h-12 w-12 sm:h-14 sm:w-14"
+        class="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-transparent shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow,opacity] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) disabled:pointer-events-none disabled:opacity-35 motion-reduce:hover:scale-100 motion-reduce:active:scale-100 h-11 w-11 sm:h-14 sm:w-14"
         aria-label={label}
         {disabled}
         {onclick}
@@ -539,7 +548,7 @@
     isActive: boolean,
 )}
     <div
-        class="relative min-h-64 overflow-hidden rounded-3xl bg-transparent p-6 shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] sm:min-h-72 sm:p-7 md:min-h-80 md:p-9"
+        class="relative min-h-56 overflow-hidden rounded-3xl bg-transparent p-5 shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] sm:min-h-72 sm:p-7 md:min-h-80 md:p-9"
     >
         <span
             class="pointer-events-none absolute inset-0 z-1 rounded-[inherit] backdrop-blur-md"
@@ -554,7 +563,7 @@
             aria-hidden="true"
         ></span>
 
-        <div class="relative z-4 flex h-full flex-col gap-6 lg:flex-row lg:items-stretch lg:gap-10">
+        <div class="relative z-4 flex h-full flex-col gap-4 sm:gap-6 lg:flex-row lg:items-stretch lg:gap-10">
             <div class="flex min-w-0 shrink-0 flex-col items-start gap-4 sm:gap-5 lg:w-64 xl:w-72">
                 <figure class="m-0">
                     <div
@@ -586,7 +595,7 @@
                         {cert.type}
                     </p>
                     <h3
-                        class="m-0 text-2xl leading-tight font-medium tracking-tight text-(--foreground) sm:text-3xl md:text-4xl"
+                        class="m-0 text-xl leading-tight font-medium tracking-tight text-(--foreground) sm:text-3xl md:text-4xl"
                     >
                         {cert.title}
                     </h3>
@@ -607,7 +616,7 @@
             <div class="min-w-0 flex-1 space-y-4 sm:space-y-5">
                 {#if cert.description}
                     <p
-                        class="m-0 text-base leading-relaxed text-[color-mix(in_srgb,var(--foreground)_78%,transparent)] sm:text-lg md:text-xl"
+                        class="m-0 text-base leading-relaxed text-[color-mix(in_srgb,var(--foreground)_78%,transparent)] max-sm:line-clamp-3 sm:text-lg md:text-xl"
                     >
                         {cert.description}
                     </p>
@@ -621,7 +630,7 @@
                             Skills covered
                         </h4>
                         <ul
-                            class="m-0 space-y-2.5 text-base leading-snug text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] sm:space-y-3 sm:text-lg sm:leading-relaxed"
+                            class="m-0 space-y-2 text-base leading-snug text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] max-sm:text-sm sm:space-y-3 sm:text-lg sm:leading-relaxed"
                         >
                             {#each cert.skills as skill (skill)}
                                 <li class="flex gap-3 sm:gap-3.5">

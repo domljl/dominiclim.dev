@@ -87,7 +87,7 @@
         {href}
         target="_blank"
         rel="noopener noreferrer"
-        class="group/btn relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-transparent px-5 py-2.5 text-sm text-(--foreground) no-underline shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:text-base"
+        class="group/btn relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-transparent px-4 py-2.5 text-sm text-(--foreground) no-underline shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:w-auto sm:px-5 sm:text-base"
         aria-label={ariaLabel}
     >
         <span
@@ -165,13 +165,13 @@
                 {/if}
             </div>
 
-            <div class="flex flex-1 flex-col gap-4 p-5 sm:gap-5 sm:p-6">
+            <div class="flex flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6">
                 <div class="space-y-2.5">
                     <h3 class="m-0 text-xl leading-tight font-medium text-(--foreground) sm:text-2xl">
                         {project.title}
                     </h3>
                     <p
-                        class="m-0 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_72%,transparent)] sm:text-base"
+                        class="m-0 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_72%,transparent)] max-sm:line-clamp-4 sm:text-base"
                     >
                         {project.description}
                     </p>
@@ -179,7 +179,7 @@
 
                 {@render techPills(project.technologies)}
 
-                <div class="mt-auto flex items-center justify-between gap-3 pt-2">
+                <div class="mt-auto flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
                     {@render actionButton(
                         project.demo,
                         demoLabel(project.demoType),

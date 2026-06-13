@@ -126,9 +126,9 @@
         "border-[color-mix(in_srgb,var(--accent)_40%,transparent)] ring-[color-mix(in_srgb,var(--accent)_35%,transparent)]";
     const glassPanel =
         "relative min-w-0 overflow-hidden rounded-3xl bg-transparent shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)]";
-    const panelPadding = "p-6 sm:p-8 lg:p-10";
+    const panelPadding = "p-5 sm:p-8 lg:p-10";
     const socialButton =
-        "group/btn relative inline-flex w-full min-w-0 items-center justify-center gap-2.5 overflow-hidden rounded-full bg-transparent px-5 py-3.5 text-base text-(--foreground) no-underline shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:px-6 sm:py-4";
+        "group/btn relative inline-flex w-full min-w-0 items-center justify-center gap-2.5 overflow-hidden rounded-full bg-transparent px-5 py-4 text-base text-(--foreground) no-underline shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow] duration-200 hover:scale-[1.02] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:px-6 sm:py-4";
 </script>
 
 {#snippet glassLayers()}
@@ -164,7 +164,7 @@
 <section
     id="contact"
     aria-label="Contact"
-    class="scroll-mt-28 px-4 py-24 sm:scroll-mt-32 sm:px-6 sm:py-28 lg:py-32"
+    class="scroll-mt-28 px-4 py-20 sm:scroll-mt-32 sm:px-6 sm:py-28 lg:py-32"
 >
     <div class="mx-auto w-full max-w-360">
         <div class="mb-10 space-y-3 sm:mb-12 sm:space-y-4">
@@ -174,7 +174,7 @@
                 Connect
             </p>
             <h2
-                class="m-0 text-4xl leading-tight font-medium tracking-tight text-(--foreground) sm:text-5xl md:text-6xl lg:text-7xl"
+                class="m-0 text-4xl leading-tight font-medium tracking-tight text-(--foreground) sm:text-5xl md:text-6xl"
             >
                 Get in touch
             </h2>
@@ -292,7 +292,7 @@
                         ></textarea>
                         <div
                             id="contact-message-hint"
-                            class="flex items-center justify-between gap-3 text-sm"
+                            class="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                         >
                             <p class="m-0 text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
                                 Minimum {MIN_MESSAGE_LENGTH} characters.
@@ -321,7 +321,7 @@
                         <button
                             type="submit"
                             disabled={status === "loading" || !isFormValid}
-                            class="group/btn relative inline-flex min-h-14 items-center justify-center gap-2.5 overflow-hidden rounded-full bg-transparent px-8 py-4 text-base font-medium text-(--foreground) shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow,opacity] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) disabled:pointer-events-none disabled:opacity-45 motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:min-h-16 sm:px-10 sm:text-lg {status ===
+                            class="group/btn relative inline-flex w-full min-h-14 items-center justify-center gap-2.5 overflow-hidden rounded-full bg-transparent px-8 py-4 text-base font-medium text-(--foreground) shadow-[0_8px_32px_rgba(0,0,0,0.22)] ring-1 ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] transition-[transform,box-shadow,opacity] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) disabled:pointer-events-none disabled:opacity-45 motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:w-auto sm:min-h-16 sm:px-10 sm:text-lg {status ===
                             'success'
                                 ? 'ring-[color-mix(in_srgb,var(--accent)_35%,transparent)]'
                                 : ''} {status === 'error'
@@ -400,7 +400,7 @@
 
                         {#if statusMessage}
                             <p
-                                class="m-0 max-w-md text-base leading-relaxed sm:text-lg {status === 'success'
+                                class="m-0 max-w-md text-center text-base leading-relaxed sm:text-left sm:text-lg {status === 'success'
                                     ? 'text-[color-mix(in_srgb,var(--foreground)_75%,transparent)]'
                                     : 'text-(--accent)'}"
                                 role="status"
@@ -435,7 +435,8 @@
                                     <rect width="20" height="16" x="2" y="4" rx="2" />
                                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                                 </svg>
-                                <span class="relative z-5 truncate font-medium">domljl07@gmail.com</span>
+                                <span class="relative z-5 font-medium sm:hidden">Email</span>
+                                <span class="relative z-5 hidden truncate font-medium sm:inline">domljl07@gmail.com</span>
                             </a>
 
                             <a

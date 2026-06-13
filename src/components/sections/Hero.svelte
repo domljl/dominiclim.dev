@@ -18,7 +18,7 @@
 
     type TypewriterPhase = "typing" | "paused" | "deleting";
 
-    let displayText = $state("");
+    let displayText = $state(phrases[0]);
     let phraseIndex = 0;
     let charIndex = 0;
     let phase: TypewriterPhase = "typing";

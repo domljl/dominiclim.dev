@@ -67,7 +67,7 @@
     <path d={pathBottom} stroke={accentRed} stroke-width="2" stroke-dasharray="4 4" opacity="0.5" fill="none" />
 
     <g transform="translate(200, 338)">
-        <text x="0" y="-82" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle">{inputLabel}</text>
+        <text x="0" y="-82" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle" class="diagram-label">{inputLabel}</text>
         <circle r="60" fill="#1e293b" stroke={techBlue} stroke-width="2" />
         {#if inputIcon === "mic"}
             <path
@@ -97,7 +97,7 @@
     </g>
 
     <g transform="translate(550, 338)">
-        <text x="0" y="-82" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle">{processorLabel}</text>
+        <text x="0" y="-82" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle" class="diagram-label">{processorLabel}</text>
         <g>
             <path d="M 0 -60 L 52 -30 L 52 30 L 0 60 L -52 30 L -52 -30 Z" fill="#1e293b" stroke={techBlue} stroke-width="2">
                 <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="30s" repeatCount="indefinite" />
@@ -111,7 +111,7 @@
     </g>
 
     <g transform="translate(900, 238)">
-        <text x="0" y="-58" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle">{outputTopLabel}</text>
+        <text x="0" y="-58" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle" class="diagram-label">{outputTopLabel}</text>
         <rect x="-40" y="-30" width="80" height="60" rx="8" fill="#1e293b" stroke={successGreen} stroke-width="2" />
         {#if outputTopIcon === "islands"}
             <circle cx="-14" cy="-6" r="7" fill={successGreen} opacity="0.85" />
@@ -123,7 +123,7 @@
     </g>
 
     <g transform="translate(900, 438)">
-        <text x="0" y="-68" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle">{outputBottomLabel}</text>
+        <text x="0" y="-68" fill="#94a3b8" font-size="16" font-family="monospace" text-anchor="middle" class="diagram-label">{outputBottomLabel}</text>
         {#if outputBottomIcon === "agent"}
             <rect x="-60" y="-45" width="120" height="90" rx="8" fill="#1e293b" stroke={accentRed} stroke-width="2" />
             <circle cx="0" cy="-10" r="15" fill={accentRed} opacity="0.8" />
@@ -155,3 +155,11 @@
         <animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="2.25s" repeatCount="indefinite" />
     </circle>
 </svg>
+
+<style>
+    @media (max-width: 639px) {
+        :global(.diagram-label) {
+            display: none;
+        }
+    }
+</style>

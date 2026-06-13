@@ -6,6 +6,7 @@ import NavBar from '@/components/layout/NavBar.svelte';
 import ThemeToggle from '@/components/ui/ThemeToggle.svelte';
 import Analytics from '@vercel/analytics/astro';
 import SpeedInsights from '@vercel/speed-insights/astro';
+import SeoHead from '@/components/SeoHead.astro';
 import '@/styles/global.css';
 ---
 
@@ -13,10 +14,11 @@ import '@/styles/global.css';
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <link rel="icon" type="image/svg+xml" href="/domLogo.png" />
-        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" type="image/svg+xml" href="/domLogo.svg" />
+        <link rel="sitemap" href="/sitemap-index.xml" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
-        <title>Dominic Lim</title>
+        <SeoHead />
         <script is:inline>
             (function () {
                 const stored = localStorage.getItem('theme');
