@@ -1,0 +1,69 @@
+[
+  {
+    "title": "CS50P: Introduction to Programming with Python",
+    "type": "Professional Certificate",
+    "icon": "harvardx",
+    "dateOfIssue": "May 2026",
+    "credential": "https://www.credly.com/badges/82c42b7b-8c35-494b-8aae-e635a88b624c/public_url",
+    "description": "Demonstrates a strong foundation in Python programming through Harvard's rigorous introductory computer science curriculum.",
+    "skills": [
+        "Core Python: functions, loops, conditionals, and data structures",
+        "Unit testing and debugging with pytest",
+        "File I/O, CSV processing, and regular expressions",
+        "Object-oriented programming and code organization"
+    ]
+  },
+  {
+    "title": "Python (Basic)",
+    "type": "Certificate of Accomplishment",
+    "icon": "hackerRank",
+    "dateOfIssue": "Oct 2025",
+    "credential": "https://www.hackerrank.com/certificates/iframe/874ac615c23b",
+    "description": "Demonstrates core Python proficiency and algorithmic problem-solving ability.",
+    "skills": [
+        "Core Python: types, control flow, functions, and error handling",
+        "Algorithmic problem solving",
+        "Clean, efficient code"
+    ]
+  },
+  {
+    "title": "React (Basic)",
+    "type": "Certificate of Accomplishment",
+    "icon": "hackerRank",
+    "dateOfIssue": "Oct 2025",
+    "credential": "https://www.hackerrank.com/certificates/iframe/a2322282a6c4",
+    "description": "Confirms understanding of React fundamentals and component-based UI development.",
+    "skills": [
+        "React fundamentals and component architecture",
+        "Interactive user interfaces",
+        "Modern React development practices"
+    ]
+  },
+  {
+    "title": "SQL (Advanced)",
+    "type": "Certificate of Accomplishment",
+    "icon": "hackerRank",
+    "dateOfIssue": "Oct 2025",
+    "credential": "https://www.hackerrank.com/certificates/iframe/d625e1431b4e",
+    "description": "Covers advanced SQL querying, optimization, and data analysis techniques.",
+    "skills": [
+        "Advanced SQL querying and database management",
+        "Query optimization and performance tuning",
+        "Data analysis with SQL"
+    ]
+  },
+  {
+    "title": "Certified Entry-Level Python Programmer",
+    "type": "Professional Certificate",
+    "icon": "openedg",
+    "dateOfIssue": "Nov 2024",
+    "credential": "https://verify.openedg.org/?id=Rvqk.NWc3.T5a7",
+    "description": "Validates foundational Python programming skills for entry-level software development roles.",
+    "skills": [
+        "Python fundamentals and data structures",
+        "Debugging and exception handling",
+        "PEP 8 and clean code standards",
+        "Scripting and workflow automation"
+    ]
+  }
+]
