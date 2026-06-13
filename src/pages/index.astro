@@ -10,9 +10,9 @@ import Timeline from "@/components/sections/Timeline.svelte";
 
 <BaseLayout>
     <Hero client:load />
-    <About client:load />
-    <Timeline client:load />
-    <Certifications client:load />
-    <Projects client:load />
-    <Contact client:load />
+    <About />
+    <Timeline client:visible />
+    <Certifications client:visible />
+    <Projects client:visible />
+    <Contact client:idle />
 </BaseLayout>

@@ -7,13 +7,18 @@
         class="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-5 sm:gap-6 lg:flex-row lg:items-center lg:gap-12"
     >
         <figure class="shrink-0">
-            <img
-                src="/photoOfMe.jpg"
-                alt="Dominic Lim, aspiring software engineer"
-                class="h-48 w-48 rounded-3xl object-cover shadow-2xl sm:h-64 sm:w-64 md:h-80 md:w-80 lg:h-96 lg:w-96"
-                loading="lazy"
-                decoding="async"
-            />
+            <picture>
+                <source srcset="/photoOfMe.webp" type="image/webp" />
+                <img
+                    src="/photoOfMe.jpg"
+                    alt="Dominic Lim, aspiring software engineer"
+                    width="384"
+                    height="384"
+                    class="h-48 w-48 rounded-3xl object-cover shadow-2xl sm:h-64 sm:w-64 md:h-80 md:w-80 lg:h-96 lg:w-96"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </picture>
         </figure>
 
         <div class="space-y-4 text-center lg:text-left">

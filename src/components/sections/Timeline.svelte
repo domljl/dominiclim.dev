@@ -701,7 +701,7 @@
                 {entry.type}
             </p>
             <p class="m-0 shrink-0 font-mono text-sm text-(--foreground) sm:text-lg" aria-live="polite">
-                {entryNumber}<span class="mx-1 text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">/</span>{entryTotal}
+                {entryNumber}<span class="mx-1 text-(--muted-foreground)">/</span>{entryTotal}
             </p>
         </div>
     {/if}
@@ -737,7 +737,7 @@
 
         <div class="min-w-0 w-full space-y-2 sm:space-y-3">
             {#if index !== undefined}
-                <p class="m-0 font-mono text-sm text-[color-mix(in_srgb,var(--foreground)_50%,transparent)]">
+                <p class="m-0 font-mono text-sm text-(--muted-foreground)">
                     {String(index + 1).padStart(2, "0")}
                 </p>
             {/if}
@@ -769,7 +769,7 @@
             >
                 {getOrganization(entry)}
                 <svg
-                    class="pointer-events-none absolute top-0 right-0 text-(--accent) opacity-60 transition-opacity duration-200 group-hover:opacity-100 {expanded
+                    class="pointer-events-none absolute top-0 right-0 text-(--accent) transition-opacity duration-200 group-hover:opacity-80 {expanded
                         ? 'h-4 w-4 sm:h-5 sm:w-5'
                         : 'h-3.5 w-3.5 sm:h-4 sm:w-4'}"
                     viewBox="0 0 24 24"
@@ -790,7 +790,7 @@
 
 {#snippet detailSection(label: string, items: string[], expanded = false)}
     <div class="space-y-2 sm:space-y-4">
-        <h3 class="m-0 text-xs font-medium tracking-[0.16em] text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase sm:text-base sm:tracking-[0.18em]">
+        <h3 class="m-0 text-xs font-medium tracking-[0.16em] text-(--muted-foreground) uppercase sm:text-base sm:tracking-[0.18em]">
             {label}
         </h3>
 
@@ -821,13 +821,15 @@
                 <img
                     src={logoUrl}
                     alt="{getOrganization(entry)} logo"
+                    width="384"
+                    height="384"
                     class="h-full w-full object-contain"
                     loading="lazy"
                     decoding="async"
                 />
             {:else}
                 <span
-                    class="font-medium text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] {expanded ? 'text-6xl lg:text-7xl' : 'text-4xl'}"
+                    class="font-medium text-(--muted-foreground) {expanded ? 'text-6xl lg:text-7xl' : 'text-4xl'}"
                     aria-hidden="true"
                 >
                     {getOrganization(entry).charAt(0)}
@@ -854,7 +856,7 @@
                 aria-controls="resume-panel-{entry.title}-{tab}"
                 class="group relative min-w-0 flex-1 basis-0 overflow-hidden rounded-[0.65rem] px-1 py-2 text-[11px] font-medium transition-[transform,color,box-shadow] duration-200 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:flex-none sm:basis-auto sm:rounded-full sm:px-4 sm:py-2.5 sm:text-sm {isActive
                     ? 'text-white shadow-[0_2px_14px_color-mix(in_srgb,var(--accent)_38%,transparent)]'
-                    : 'text-[color-mix(in_srgb,var(--foreground)_52%,transparent)] hover:text-[color-mix(in_srgb,var(--foreground)_82%,transparent)]'}"
+                    : 'text-(--muted-foreground) hover:text-[color-mix(in_srgb,var(--foreground)_82%,transparent)]'}"
                 onclick={() => setResumeTab(entry.title, tab)}
             >
                 {#if isActive}
@@ -876,7 +878,7 @@
                     <span
                         class="shrink-0 font-mono text-[10px] leading-none tabular-nums sm:min-w-5 sm:rounded-full sm:px-1.5 sm:py-0.5 sm:text-[11px] {isActive
                             ? 'text-white/80 sm:bg-white/20 sm:text-white'
-                            : 'text-[color-mix(in_srgb,var(--foreground)_42%,transparent)] sm:bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] sm:text-[color-mix(in_srgb,var(--foreground)_48%,transparent)] group-hover:text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]'}"
+                            : 'text-(--muted-foreground) sm:bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] sm:text-(--muted-foreground) group-hover:text-[color-mix(in_srgb,var(--foreground)_65%,transparent)]'}"
                     >
                         {section.items.length}
                     </span>
@@ -914,13 +916,15 @@
                         <img
                             src={logoUrl}
                             alt="{getOrganization(entry)} logo"
+                            width="384"
+                            height="384"
                             class="h-full w-full object-contain"
                             loading="lazy"
                             decoding="async"
                         />
                     {:else}
                         <span
-                            class="text-lg font-medium text-[color-mix(in_srgb,var(--foreground)_50%,transparent)]"
+                            class="text-lg font-medium text-(--muted-foreground)"
                             aria-hidden="true"
                         >
                             {getOrganization(entry).charAt(0)}
@@ -934,7 +938,7 @@
                     <h3 class="m-0 min-w-0 font-medium leading-tight text-(--foreground) text-lg sm:text-xl">
                         {entry.title}
                     </h3>
-                    <p class="m-0 shrink-0 text-sm text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] sm:text-base">
+                    <p class="m-0 shrink-0 text-sm text-(--muted-foreground) sm:text-base">
                         {entry.date}
                     </p>
                 </div>
@@ -947,7 +951,7 @@
                 >
                     {getOrganization(entry)}
                     <svg
-                        class="pointer-events-none absolute top-0.5 right-0 h-3.5 w-3.5 text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] opacity-60 transition-opacity duration-200 group-hover:opacity-100"
+                        class="pointer-events-none absolute top-0.5 right-0 h-3.5 w-3.5 text-(--muted-foreground) transition-opacity duration-200 group-hover:opacity-80"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -964,7 +968,7 @@
                 {#if sections.length > 0}
                     {#if isWorkEntry(entry)}
                         <div class="space-y-2.5 pt-1">
-                            <p class="m-0 text-xs font-medium tracking-[0.16em] text-[color-mix(in_srgb,var(--foreground)_45%,transparent)] uppercase sm:text-sm">
+                            <p class="m-0 text-xs font-medium tracking-[0.16em] text-(--muted-foreground) uppercase sm:text-sm">
                                 {resumeTabLabel(sections[0].label)}
                             </p>
                             {@render resumeItemList(sections[0].items)}

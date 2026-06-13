@@ -11,6 +11,10 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: 'https://dominiclim.dev',
   adapter: vercel(),
+  build: {
+    inlineStylesheets: 'always',
+  },
+
   vite: {
     plugins: [tailwindcss()],
     build: {

@@ -44,6 +44,7 @@ html.light {
     color-scheme: light;
     --background: #fdf7c3;
     --foreground: #1e293b;
+    --muted-foreground: #475569;
     --accent: #f0485f;
 }
 
@@ -51,6 +52,7 @@ html.dark {
     color-scheme: dark;
     --background: #02182b;
     --foreground: #f1f5f9;
+    --muted-foreground: #94a3b8;
     --accent: #d7263d;
 }
 
@@ -59,6 +61,7 @@ html.dark {
         color-scheme: dark;
         --background: #02182b;
         --foreground: #f1f5f9;
+        --muted-foreground: #94a3b8;
         --accent: #d7263d;
     }
 }

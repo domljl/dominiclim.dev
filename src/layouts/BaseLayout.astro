@@ -7,6 +7,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle.svelte';
 import Analytics from '@vercel/analytics/astro';
 import SpeedInsights from '@vercel/speed-insights/astro';
 import SeoHead from '@/components/SeoHead.astro';
+import spaceGroteskFont from '@/assets/fonts/SpaceGrotesk-500.ttf?url';
 import '@/styles/global.css';
 ---
 
@@ -15,6 +16,7 @@ import '@/styles/global.css';
     <head>
         <meta charset="utf-8" />
         <link rel="icon" type="image/svg+xml" href="/domLogo.svg" />
+        <link rel="preload" href={spaceGroteskFont} as="font" type="font/ttf" crossorigin />
         <link rel="sitemap" href="/sitemap-index.xml" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
@@ -48,8 +50,10 @@ import '@/styles/global.css';
                 <ThemeToggle client:load />
             </div>
         </header>
-        <slot />
-        <BackToTop client:load />
+        <main id="main-content">
+            <slot />
+        </main>
+        <BackToTop client:visible />
         <Analytics />
         <SpeedInsights />
     </body>

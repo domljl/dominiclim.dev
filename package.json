@@ -7,10 +7,11 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/generate-og-image.mjs && astro build",
+    "build": "node scripts/generate-og-image.mjs && node scripts/optimize-images.mjs && astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "generate:og-image": "node scripts/generate-og-image.mjs"
+    "generate:og-image": "node scripts/generate-og-image.mjs",
+    "optimize:images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",

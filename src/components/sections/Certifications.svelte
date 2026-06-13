@@ -222,7 +222,7 @@
         <div class="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <div class="space-y-2 sm:space-y-3">
                 <p
-                    class="m-0 text-xs font-medium tracking-[0.2em] text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] uppercase sm:text-sm sm:tracking-[0.22em]"
+                    class="m-0 text-xs font-medium tracking-[0.2em] text-(--muted-foreground) uppercase sm:text-sm sm:tracking-[0.22em]"
                 >
                     Credentials
                 </p>
@@ -234,7 +234,7 @@
             </div>
             {#if viewMode === "carousel"}
                 <p class="m-0 shrink-0 font-mono text-base text-(--foreground) sm:text-xl" aria-live="polite">
-                    {entryNumber}<span class="mx-1 text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">/</span>{entryTotal}
+                    {entryNumber}<span class="mx-1 text-(--muted-foreground)">/</span>{entryTotal}
                 </p>
             {/if}
         </div>
@@ -476,13 +476,15 @@
                         <img
                             src={iconUrl}
                             alt="{issuer} logo"
+                            width="128"
+                            height="128"
                             class="h-full w-full object-contain"
                             loading="lazy"
                             decoding="async"
                         />
                     {:else}
                         <span
-                            class="flex h-full w-full items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] text-lg font-medium text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]"
+                            class="flex h-full w-full items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] text-lg font-medium text-(--muted-foreground)"
                             aria-hidden="true"
                         >
                             {issuer.charAt(0)}
@@ -496,12 +498,12 @@
                     <h3 class="m-0 min-w-0 text-base leading-tight font-medium text-(--foreground) sm:text-lg">
                         {cert.title}
                     </h3>
-                    <p class="m-0 shrink-0 text-xs text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] sm:text-sm">
+                    <p class="m-0 shrink-0 text-xs text-(--muted-foreground) sm:text-sm">
                         {cert.dateOfIssue}
                     </p>
                 </div>
 
-                <p class="m-0 text-xs text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase tracking-[0.14em] sm:text-sm">
+                <p class="m-0 text-xs text-(--muted-foreground) uppercase tracking-[0.14em] sm:text-sm">
                     {cert.type}
                 </p>
 
@@ -523,7 +525,7 @@
                 >
                     Verify credential
                     <svg
-                        class="pointer-events-none absolute top-0 right-0 text-(--accent) opacity-60 transition-opacity duration-200 group-hover:opacity-100 h-3.5 w-3.5 sm:h-4 sm:w-4"
+                        class="pointer-events-none absolute top-0 right-0 text-(--accent) transition-opacity duration-200 group-hover:opacity-80 h-3.5 w-3.5 sm:h-4 sm:w-4"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -573,13 +575,15 @@
                             <img
                                 src={iconUrl}
                                 alt="{issuer} logo"
+                                width="128"
+                                height="128"
                                 class="h-full w-full object-contain"
                                 loading="lazy"
                                 decoding="async"
                             />
                         {:else}
                             <span
-                                class="flex h-full w-full items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] text-2xl font-medium text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] sm:text-3xl md:text-4xl"
+                                class="flex h-full w-full items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] text-2xl font-medium text-(--muted-foreground) sm:text-3xl md:text-4xl"
                                 aria-hidden="true"
                             >
                                 {issuer.charAt(0)}
@@ -590,7 +594,7 @@
 
                 <div class="space-y-2 sm:space-y-3">
                     <p
-                        class="m-0 text-xs font-medium tracking-[0.16em] text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase sm:text-sm"
+                        class="m-0 text-xs font-medium tracking-[0.16em] text-(--muted-foreground) uppercase sm:text-sm"
                     >
                         {cert.type}
                     </p>
@@ -602,7 +606,7 @@
                     <p class="m-0 text-sm text-[color-mix(in_srgb,var(--foreground)_70%,transparent)] sm:text-base md:text-lg">
                         Issued {cert.dateOfIssue}
                     </p>
-                    <p class="m-0 text-sm text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] sm:text-base md:text-lg">
+                    <p class="m-0 text-sm text-(--muted-foreground) sm:text-base md:text-lg">
                         {issuer}
                     </p>
                 </div>
@@ -625,7 +629,7 @@
                 {#if cert.skills.length > 0}
                     <div class="space-y-3 sm:space-y-4 {cert.description ? 'mt-4 sm:mt-6' : ''}">
                         <h4
-                            class="m-0 text-xs font-medium tracking-[0.16em] text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] uppercase sm:text-sm sm:tracking-[0.18em]"
+                            class="m-0 text-xs font-medium tracking-[0.16em] text-(--muted-foreground) uppercase sm:text-sm sm:tracking-[0.18em]"
                         >
                             Skills covered
                         </h4>
@@ -654,7 +658,7 @@
                     >
                         Verify credential
                         <svg
-                            class="pointer-events-none absolute top-0 right-0 text-(--accent) opacity-60 transition-opacity duration-200 group-hover:opacity-100 h-3.5 w-3.5 sm:h-4 sm:w-4"
+                            class="pointer-events-none absolute top-0 right-0 text-(--accent) transition-opacity duration-200 group-hover:opacity-80 h-3.5 w-3.5 sm:h-4 sm:w-4"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"

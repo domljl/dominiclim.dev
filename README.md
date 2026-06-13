@@ -1,43 +1,80 @@
-# Astro Starter Kit: Minimal
+# dominiclim.dev
 
-```sh
-pnpm create astro@latest -- --template minimal
-```
+Personal portfolio site for [Dominic Lim](https://dominiclim.dev).
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Built with Astro and Svelte, deployed on Vercel.
 
-## 🚀 Project Structure
+## Features
 
-Inside of your Astro project, you'll see the following folders and files:
+- Single-page layout with Hero, About, Timeline, Certifications, Projects, and Contact sections
+- Dark mode with system preference support
+- Three.js loading screen with animated logo
+- Contact form via EmailJS (client-side or server-validated API route)
+- SEO: meta tags, Open Graph, JSON-LD, sitemap, and robots.txt
+
+## Tech stack
+
+- [Astro](https://astro.build) 6
+- [Svelte](https://svelte.dev) 5
+- [Tailwind CSS](https://tailwindcss.com) 4
+- [Three.js](https://threejs.org) + troika-three-text
+- [Vercel](https://vercel.com) (hosting, analytics, speed insights)
+
+## Project structure
 
 ```text
 /
-├── public/
+├── public/              # Static assets (logo, OG image)
+├── scripts/             # Build scripts (OG image generation)
 ├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+│   ├── components/      # Svelte UI and section components
+│   ├── data/            # JSON content (projects, timeline, certifications)
+│   ├── layouts/         # BaseLayout.astro
+│   ├── lib/             # Shared utilities and site config
+│   ├── pages/           # Routes (index, API, robots.txt)
+│   └── styles/          # Global CSS
+└── astro.config.mjs
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Content for projects, timeline, and certifications lives in `src/data/*.json`.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+## Getting started
 
-Any static assets, like images, can be placed in the `public/` directory.
+Requires Node.js 22.x.
 
-## 🧞 Commands
+```sh
+pnpm install
+pnpm dev
+```
 
-All commands are run from the root of the project, from a terminal:
+The dev server runs at [http://localhost:3000](http://localhost:3000).
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
+## Commands
 
-## 👀 Want to learn more?
+| Command | Action |
+| :------ | :----- |
+| `pnpm dev` | Start local dev server |
+| `pnpm build` | Generate OG image and build for production |
+| `pnpm preview` | Preview the production build locally |
+| `pnpm generate:og-image` | Regenerate `public/og-image.png` from the logo |
+| `pnpm optimize:images` | Compress and resize source images |
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## Environment variables
+
+Copy `.env.example` to `.env` and fill in your EmailJS credentials.
+
+**Client-side** (current contact form setup):
+
+- `PUBLIC_EMAILJS_SERVICE_ID`
+- `PUBLIC_EMAILJS_TEMPLATE_ID`
+- `PUBLIC_EMAILJS_PUBLIC_KEY`
+
+**Server-side** (optional, for `/api/contact`):
+
+- `EMAILJS_SERVICE_ID`
+- `EMAILJS_TEMPLATE_ID`
+- `EMAILJS_PUBLIC_KEY`
+
+## License
+
+Private — all rights reserved.

@@ -16,7 +16,7 @@
     <div class="mx-auto w-full max-w-360">
         <div class="mb-8 space-y-2 sm:mb-10 sm:space-y-3">
             <p
-                class="m-0 text-xs font-medium tracking-[0.2em] text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] uppercase sm:text-sm sm:tracking-[0.22em]"
+                class="m-0 text-xs font-medium tracking-[0.2em] text-(--muted-foreground) uppercase sm:text-sm sm:tracking-[0.22em]"
             >
                 Portfolio
             </p>
@@ -56,7 +56,7 @@
         aria-hidden="true"
     >
         <span
-            class="text-4xl font-medium text-[color-mix(in_srgb,var(--foreground)_35%,transparent)] sm:text-5xl"
+            class="text-4xl font-medium text-(--muted-foreground) sm:text-5xl"
         >
             {title.charAt(0)}
         </span>

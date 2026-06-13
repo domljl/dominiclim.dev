@@ -316,7 +316,7 @@
                         class="relative z-4 flex items-center justify-between border-b border-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-4 py-3"
                     >
                         <span
-                            class="text-xs font-medium tracking-[0.22em] text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] uppercase"
+                            class="text-xs font-medium tracking-[0.22em] text-(--muted-foreground) uppercase"
                         >
                             Navigate
                         </span>
@@ -358,7 +358,7 @@
                         class="relative z-4 border-t border-[color-mix(in_srgb,var(--foreground)_10%,transparent)] p-3"
                     >
                         <p
-                            class="mb-2 px-1 text-xs font-medium tracking-[0.18em] text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] uppercase"
+                            class="mb-2 px-1 text-xs font-medium tracking-[0.18em] text-(--muted-foreground) uppercase"
                         >
                             Appearance
                         </p>

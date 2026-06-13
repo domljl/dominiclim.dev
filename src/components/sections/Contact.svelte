@@ -119,7 +119,7 @@
     };
 
     const inputBase =
-        "w-full rounded-2xl border bg-transparent px-5 py-4 text-base text-(--foreground) shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] ring-1 transition-[box-shadow,ring-color] duration-200 placeholder:text-[color-mix(in_srgb,var(--foreground)_40%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] sm:px-6 sm:py-4.5 sm:text-lg";
+        "w-full rounded-2xl border bg-transparent px-5 py-4 text-base text-(--foreground) shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] ring-1 transition-[box-shadow,ring-color] duration-200 placeholder:text-(--muted-foreground) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] sm:px-6 sm:py-4.5 sm:text-lg";
     const inputDefault =
         "border-[color-mix(in_srgb,var(--foreground)_12%,transparent)] ring-[color-mix(in_srgb,var(--foreground)_12%,transparent)] hover:ring-[color-mix(in_srgb,var(--foreground)_22%,transparent)]";
     const inputError =
@@ -169,7 +169,7 @@
     <div class="mx-auto w-full max-w-360">
         <div class="mb-10 space-y-3 sm:mb-12 sm:space-y-4">
             <p
-                class="m-0 text-xs font-medium tracking-[0.2em] text-[color-mix(in_srgb,var(--foreground)_55%,transparent)] uppercase sm:text-sm sm:tracking-[0.22em]"
+                class="m-0 text-xs font-medium tracking-[0.2em] text-(--muted-foreground) uppercase sm:text-sm sm:tracking-[0.22em]"
             >
                 Connect
             </p>
@@ -219,7 +219,7 @@
                         />
                         <p
                             id="contact-name-hint"
-                            class="m-0 text-sm text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]"
+                            class="m-0 text-sm text-(--muted-foreground)"
                         >
                             At least {MIN_NAME_LENGTH} characters.
                         </p>
@@ -294,7 +294,7 @@
                             id="contact-message-hint"
                             class="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                         >
-                            <p class="m-0 text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
+                            <p class="m-0 text-(--muted-foreground)">
                                 Minimum {MIN_MESSAGE_LENGTH} characters.
                             </p>
                             <p

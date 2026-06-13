@@ -2,7 +2,7 @@ import { socialLinks } from "@/lib/contact";
 
 export const siteConfig = {
     url: "https://dominiclim.dev",
-    title: "Dominic Lim — Aspiring Software Engineer",
+    title: "Dominic Lim",
     shortTitle: "Dominic Lim",
     description:
         "Dominic Lim — aspiring software engineer portfolio. Passionate about coding, solving problems, and building useful projects.",
