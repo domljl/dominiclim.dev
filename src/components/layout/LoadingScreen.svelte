@@ -19,8 +19,9 @@
     import { Text } from "troika-three-text";
     import * as opentype from "opentype.js/dist/opentype.mjs";
     import type { Font } from "opentype.js";
-    import spaceGroteskFontUrl from "@/assets/fonts/SpaceGrotesk-500.ttf?url";
     import { getThemeColors, subscribeToColorScheme } from "@/lib/theme";
+
+    const spaceGroteskFontUrl = "/fonts/SpaceGrotesk-500.ttf";
 
     export let visible = true;
 

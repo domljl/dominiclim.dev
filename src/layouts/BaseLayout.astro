@@ -1,13 +1,12 @@
 ---
 import BackToTop from '@/components/layout/BackToTop.svelte';
-import LoadingScreen from '@/components/layout/LoadingScreen.svelte';
+import LoadingScreenGate from '@/components/layout/LoadingScreenGate.svelte';
 import LogoLink from '@/components/layout/LogoLink.svelte';
 import NavBar from '@/components/layout/NavBar.svelte';
 import ThemeToggle from '@/components/ui/ThemeToggle.svelte';
 import Analytics from '@vercel/analytics/astro';
 import SpeedInsights from '@vercel/speed-insights/astro';
 import SeoHead from '@/components/SeoHead.astro';
-import spaceGroteskFont from '@/assets/fonts/SpaceGrotesk-500.ttf?url';
 import '@/styles/global.css';
 ---
 
@@ -16,7 +15,7 @@ import '@/styles/global.css';
     <head>
         <meta charset="utf-8" />
         <link rel="icon" type="image/svg+xml" href="/domLogo.svg" />
-        <link rel="preload" href={spaceGroteskFont} as="font" type="font/ttf" crossorigin />
+        <link rel="preload" href="/fonts/SpaceGrotesk-500.ttf" as="font" type="font/ttf" crossorigin />
         <link rel="sitemap" href="/sitemap-index.xml" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
@@ -36,18 +35,18 @@ import '@/styles/global.css';
         </script>
     </head>
     <body class="antialiased">
-        <LoadingScreen client:only="svelte" visible={true} />
+        <LoadingScreenGate client:only="svelte" visible={true} />
         <header
             class="pointer-events-none fixed top-11 right-4 left-4 z-50 flex items-center justify-between"
         >
-            <LogoLink client:load />
+            <LogoLink client:idle />
             <div
                 class="pointer-events-auto lg:absolute lg:left-1/2 lg:w-max lg:max-w-[calc(100%-9rem)] lg:-translate-x-1/2"
             >
-                <NavBar client:load />
+                <NavBar client:idle />
             </div>
             <div class="pointer-events-auto hidden lg:block">
-                <ThemeToggle client:load />
+                <ThemeToggle client:idle />
             </div>
         </header>
         <main id="main-content">
