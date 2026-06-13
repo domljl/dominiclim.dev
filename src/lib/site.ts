@@ -5,11 +5,14 @@ export const siteConfig = {
     title: "Dominic Lim — Aspiring Software Engineer",
     shortTitle: "Dominic Lim",
     description:
-        "Portfolio of Dominic Lim, an aspiring software engineer passionate about coding, solving complex problems, and building useful projects.",
+        "Dominic Lim — aspiring software engineer portfolio. Passionate about coding, solving problems, and building useful projects.",
     locale: "en",
     author: "Dominic Lim",
     jobTitle: "Aspiring Software Engineer",
-    ogImage: "/photoOfMe.jpg",
+    ogImage: "/og-image.png",
+    ogImageWidth: 1200,
+    ogImageHeight: 630,
+    ogImageAlt: "Dominic Lim logo",
     sameAs: [socialLinks.github, socialLinks.linkedin],
 } as const;
 
