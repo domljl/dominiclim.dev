@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { cubicOut, cubicIn } from "svelte/easing";
     import { fly } from "svelte/transition";
-    import ThemeToggle from "@/components/ThemeToggle.svelte";
+    import ThemeToggle from "@/components/ui/ThemeToggle.svelte";
 
     const links = [
         { label: "About", id: "about" },
@@ -70,6 +70,15 @@
             }
         }
 
+        const lastId = sectionIds[sectionIds.length - 1];
+        const atPageBottom =
+            window.innerHeight + window.scrollY >=
+            document.documentElement.scrollHeight - 8;
+
+        if (atPageBottom) {
+            current = lastId;
+        }
+
         activeSection = current;
     };
 
@@ -84,12 +93,18 @@
         const section = document.getElementById(sectionId);
         if (!section) return;
 
+        activeSection = sectionId;
+
         section.scrollIntoView({
             behavior: reducedMotion ? "auto" : "smooth",
             block: "start",
         });
         clearUrlHash();
         closeMenu();
+
+        if (!reducedMotion) {
+            window.setTimeout(updateActiveSection, 400);
+        }
     };
 
     const handleNavClick = (event: MouseEvent, sectionId: string) => {

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
-    import Logo from "@/components/Logo.svelte";
-    import ScrollIndicator from "@/components/ScrollIndicator.svelte";
+    import Logo from "@/components/ui/Logo.svelte";
+    import ScrollIndicator from "@/components/ui/ScrollIndicator.svelte";
 
     const phrases = ["Aspiring Software Engineer", "Problem Solver", "Challenge Seeker"] as const;
 

@@ -1,10 +1,20 @@
 <script lang="ts">
-    import Logo from "@/components/Logo.svelte";
+    import { onMount } from "svelte";
+    import Logo from "@/components/ui/Logo.svelte";
+
+    let reducedMotion = $state(false);
 
     const scrollToTop = (event: MouseEvent) => {
         event.preventDefault();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({
+            top: 0,
+            behavior: reducedMotion ? "auto" : "smooth",
+        });
     };
+
+    onMount(() => {
+        reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    });
 </script>
 
 <a

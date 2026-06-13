@@ -15,7 +15,7 @@
 
     const entries = timelineEntries;
     const holdRatio = 0.42;
-    const scrollLengthPerEntry = 1.6;
+    const scrollLengthPerEntry = 1.2;
     const slideTravelRatio = 0.44;
     const incomingOpacityStart = 0.1;
     const outgoingOpacityFadeStart = 0.45;
@@ -47,6 +47,8 @@
     let isCompactView = $state(false);
     let compactScale = $state(1);
     let compactCardHeight = $state<number | undefined>(undefined);
+    let showScrollChrome = $state(true);
+    let scrollChromeOpacity = $state(1);
 
     const cardRefs: Record<number, HTMLElement | undefined> = {};
 
@@ -168,11 +170,15 @@
 
         if (scrollY < sectionTop) {
             scrollProgress = 0;
+            showScrollChrome = true;
+            scrollChromeOpacity = 1;
             return;
         }
 
         if (scrollY >= sectionEnd) {
             scrollProgress = entries.length;
+            scrollChromeOpacity = 0;
+            showScrollChrome = false;
             return;
         }
 
@@ -181,6 +187,29 @@
             0,
             entries.length,
         );
+
+        const certificationsSection = document.getElementById("certifications");
+        const certificationsTop = certificationsSection?.getBoundingClientRect().top;
+
+        let opacity = 1;
+
+        if (certificationsTop !== undefined && certificationsTop < viewportHeight * 0.95) {
+            opacity = Math.min(
+                opacity,
+                clamp((certificationsTop - viewportHeight * 0.55) / (viewportHeight * 0.4), 0, 1),
+            );
+        }
+
+        const timelineEndFadeStart = sectionEnd - viewportHeight * 0.3;
+        if (scrollY > timelineEndFadeStart) {
+            opacity = Math.min(
+                opacity,
+                clamp(1 - (scrollY - timelineEndFadeStart) / (viewportHeight * 0.3), 0, 1),
+            );
+        }
+
+        scrollChromeOpacity = opacity;
+        showScrollChrome = scrollChromeOpacity > 0.02;
     };
 
     type SlideStyle = {
@@ -310,7 +339,7 @@
 
     const dotWeight = (index: number) => clamp(1 - Math.abs(indicatorProgress - index), 0, 1);
 
-    const compactVerticalPadding = 168;
+    const compactVerticalPadding = 120;
 
     const getCardCompactScale = (index: number) => {
         if (!isCompactView || viewMode !== "scroll") return 1;
@@ -482,14 +511,18 @@
     bind:this={sectionRef}
     id="timeline"
     aria-label="Timeline"
-    class="relative overflow-x-clip scroll-mt-28 sm:scroll-mt-32 {viewMode === 'resume' ? 'min-h-screen px-4 pb-16 sm:px-6' : ''}"
+    class="relative overflow-x-clip scroll-mt-28 sm:scroll-mt-32 {viewMode === 'resume' ? 'px-4 pb-12 sm:px-6' : ''}"
 >
     {#if viewMode === "scroll"}
         <div in:scrollViewIn out:scrollViewOut>
             <div bind:this={panelRef} class="sticky top-0 h-dvh overflow-hidden">
             <nav
-                class="absolute top-1/2 right-3 z-30 flex -translate-y-1/2 flex-col items-center max-sm:top-auto max-sm:right-1.5 max-sm:bottom-20 max-sm:translate-y-0 sm:right-6 lg:right-8"
+                class="absolute top-1/2 right-3 z-30 flex -translate-y-1/2 flex-col items-center max-sm:top-auto max-sm:right-1.5 max-sm:bottom-20 max-sm:translate-y-0 sm:right-6 lg:right-8 {showScrollChrome
+                    ? 'pointer-events-auto'
+                    : 'pointer-events-none'}"
+                style:opacity={scrollChromeOpacity}
                 aria-label="Timeline progress"
+                aria-hidden={!showScrollChrome}
             >
                 <div class="flex flex-col items-center gap-2 sm:gap-2.5">
                     {#each entries as entry, index (index)}
@@ -518,7 +551,7 @@
             </nav>
 
             <div
-                class="absolute inset-0 flex items-center justify-center px-3 py-20 pr-7 sm:px-10 sm:py-24 sm:pr-10 lg:px-16"
+                class="absolute inset-0 flex items-center justify-center px-3 py-14 pr-7 sm:px-10 sm:py-16 sm:pr-10 lg:px-16"
             >
                 <div
                     class="relative h-full w-full max-w-360 overflow-hidden"
@@ -566,8 +599,13 @@
             <button
                 bind:this={showAllButtonRef}
                 type="button"
-                class="absolute bottom-4 left-3 z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:bottom-10 sm:left-8"
+                class="absolute bottom-4 left-3 z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:bottom-10 sm:left-8 {showScrollChrome
+                    ? 'pointer-events-auto'
+                    : 'pointer-events-none'}"
+                style:opacity={scrollChromeOpacity}
                 aria-label="Show full timeline"
+                aria-hidden={!showScrollChrome}
+                tabindex={showScrollChrome ? 0 : -1}
                 onclick={showResume}
             >
                 {@render viewToggleButton("Show all", "forward")}
@@ -581,7 +619,7 @@
             <button
                 bind:this={backButtonRef}
                 type="button"
-                class="mb-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:mb-12"
+                class="mb-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) sm:mb-8"
                 aria-label="Return to scroll timeline"
                 onclick={showScroll}
             >
@@ -658,7 +696,7 @@
 
 {#snippet entryCard(entry: TimelineEntry, expanded = false, cardIndex?: number)}
     {#if expanded && cardIndex === displayIndex}
-        <div class="mb-2 flex items-start justify-between gap-3 sm:mb-10 sm:gap-6">
+        <div class="mb-2 flex items-start justify-between gap-3 sm:mb-7 sm:gap-5">
             <p class="m-0 text-xs font-medium tracking-[0.2em] text-(--foreground) uppercase sm:text-base sm:tracking-[0.22em]">
                 {entry.type}
             </p>
@@ -668,7 +706,7 @@
         </div>
     {/if}
 
-    <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:gap-12 lg:gap-20">
+    <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:gap-8 lg:gap-14">
         {@render entryMeta(entry, undefined, expanded)}
 
         {#if getScrollSections(entry).length > 0}
@@ -678,7 +716,7 @@
             ></div>
             <div
                 class="min-w-0 w-full flex-1 text-left {expanded
-                    ? 'space-y-3 sm:space-y-8'
+                    ? 'space-y-3 sm:space-y-5'
                     : 'space-y-5'}"
             >
                 {#each getScrollSections(entry) as section (section.label)}

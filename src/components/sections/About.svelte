@@ -1,10 +1,10 @@
 <section
     id="about"
     aria-label="About Dominic Lim"
-    class="flex min-h-screen items-center justify-center px-4 sm:px-6"
+    class="scroll-mt-28 px-4 py-16 sm:scroll-mt-32 sm:px-6"
 >
     <div
-        class="flex w-full max-w-6xl flex-col items-center justify-center gap-6 sm:gap-8 lg:flex-row lg:gap-16"
+        class="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-5 sm:gap-6 lg:flex-row lg:items-center lg:gap-12"
     >
         <figure class="shrink-0">
             <img
@@ -16,7 +16,7 @@
             />
         </figure>
 
-        <div class="space-y-6 text-center lg:text-left">
+        <div class="space-y-4 text-center lg:text-left">
             <h2
                 class="m-0 text-4xl leading-tight font-medium tracking-tight text-(--foreground) md:text-5xl lg:text-6xl"
             >
