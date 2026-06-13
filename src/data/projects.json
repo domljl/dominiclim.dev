@@ -1,0 +1,38 @@
+[
+  {
+    "title": "dominiclim.dev",
+    "description": "A modern, responsive portfolio website built with Astro, React, and TypeScript. Features smooth animations, dark mode support, and an infinite scrolling certification carousel.",
+    "technologies": ["Astro", "Svelte", "TypeScript", "Tailwind CSS", "Three.js"],
+    "github": "https://www.github.com/domljl/portfolioWebsite",
+    "demo": "https://www.dominiclim.dev",
+    "demoType": "live",
+    "image": "portfolioWebsite"
+  },
+  {
+    "title": "KineGit",
+    "description": "A fictional gym website called 'KineGit' that allows people to register and start booking classes!",
+    "technologies": ["MySQL", "Bootstrap 5.3.3", "HTML", "CSS", "Javascript"],
+    "github": "https://www.github.com/domljl/KineGit",
+    "demo": "https://kinegit.vercel.app/",
+    "demoType": "live",
+    "image": "kineGit"
+  },
+  {
+    "title": "OCBC Virtual Teller Machine",
+    "description": "An end-to-end Virtual Teller Machine (VTM) prototype built for the OCBC Ignite Innovation Challenge 2025.",
+    "technologies": ["React", "WebRTC", "Vite", "Tailwind CSS"],
+    "github": "https://github.com/domljl/ocbc-vtm-poc",
+    "demo": "https://drive.google.com/file/d/1SjVHU8AERi1ZKrI70-umMtmFHBE1G5Tc/view?usp=sharing",
+    "demoType": "video",
+    "image": "ocbcVTM"
+  },
+  {
+    "title": "Facial Recognition Authentication",
+    "description": "Multi-user face + password authentication app with a FastAPI backend and React/Vite frontend—users register with webcam capture and login via facial recognition or password, using JWT-based auth.",
+    "technologies": ["React", "WebRTC", "SQLite", "Python", "FastAPI"],
+    "github": "https://github.com/domljl/facialRecognition",
+    "demo": "https://drive.google.com/file/d/11niBhIIhqsvAPGWUtEgZoDgEZCUkY2Rj/view?usp=sharing",
+    "demoType": "video",
+    "image": "facialRecognition"
+  }
+]
